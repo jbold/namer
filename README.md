@@ -26,14 +26,18 @@ Generates 1000+ candidates using free APIs, mechanically shortlists by quality, 
 
 This skill follows the [Agent Skills](https://agentskills.io) open standard.
 
+**Claude Code — personal** (available in all projects):
 ```bash
-# Claude Code — personal (available in all projects)
 git clone https://github.com/jbold/namer.git ~/.claude/skills/namer
+```
 
-# Claude Code — per-project only
+**Claude Code — per-project only:**
+```bash
 git clone https://github.com/jbold/namer.git .claude/skills/namer
+```
 
-# OpenClaw
+**OpenClaw:**
+```bash
 git clone https://github.com/jbold/namer.git ~/openclaw/skills/namer
 ```
 
