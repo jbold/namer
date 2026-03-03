@@ -38,17 +38,22 @@ python3 scripts/filter.py --input candidates-raw.txt --out candidates-filtered.t
 - Use `--limit 100` for testing
 - Full results in TSV for review
 
-### Step 4: Web Search Gate (zero LLM tokens, requires any web search API)
+### Step 4: Web Search Gate (zero LLM tokens)
+
+**If you have a built-in search tool** (web_search, MCP search server, browser search, etc.), use it directly. For each candidate, search the name and check for these product signals:
+- Keywords: app, software, platform, saas, tool, service, download, pricing, sign up, login, api, sdk, startup, inc, ltd, gmbh, solutions, technologies, product, features, demo, get started, free trial, enterprise, cloud
+- Domain signals: .io, .ai, .app
+- Verdict: 0-1 signals = CLEAR, 1 signal = CAUTION, 2+ signals = BUMPED (existing product, name is dead)
+
+**If no search tool is available**, use the standalone script:
 ```bash
 python3 scripts/websearch_gate.py --input candidates-filtered.txt --out candidates-gated.txt
 ```
-- Auto-discovers your search provider from environment (Brave, Serper, Google CSE, or SearXNG)
-- Detects product signals: app, software, platform, pricing, sign up, .io, .ai, etc.
-- Verdicts: CLEAR (no products) / CAUTION (weak signal) / BUMPED (existing product)
-- **This is a hard gate**: if a web search returns existing products, the name is dead
+- Auto-discovers environment (Claude Code, OpenClaw, Cursor, etc.) and available search providers
+- Checks MCP configs, env vars, and CLI tools in priority order
+- If nothing found, prompts user to configure a search provider (Brave recommended as default)
 - Outputs report with evidence (top results + signals detected)
 - Rate limit: use `--delay 1.1` for free tiers
-- Override provider: `--provider serper --api-key KEY`
 
 ### Step 5: Evaluate (LLM, small batch only)
 Load `references/diamond-framework.md`. Score the filtered survivors against:

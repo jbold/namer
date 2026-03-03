@@ -46,7 +46,15 @@ Point your agent at `SKILL.md` as a prompt. The scripts are standalone Python �
 
 ## Web search providers
 
-The web search gate auto-discovers your search provider from environment variables. Set any one:
+The web search gate auto-discovers your search setup in this order:
+
+1. **Agent environment** — detects Claude Code, OpenClaw, Cursor, Windsurf, or VS Code
+2. **MCP configs** — scans your MCP server configs for search tools (brave-search, web-search, tavily, serper, exa, etc.) and reuses their API keys
+3. **Environment variables** — checks for direct API keys (see table)
+4. **CLI tools** — checks PATH for `ddgr`, `googler`, etc. (noted but not yet used directly)
+5. **Guided setup** — if nothing found, recommends Brave Search (free, 30 sec signup)
+
+You can also run `python3 scripts/websearch_gate.py --detect` to see what's available without running anything.
 
 | Provider | Env vars | Cost |
 |----------|----------|------|
@@ -56,6 +64,8 @@ The web search gate auto-discovers your search provider from environment variabl
 | SearXNG | `SEARXNG_URL` | Free (self-hosted) |
 
 No search API? The web gate step is optional — skip it and go straight from filtering to evaluation.
+
+**If your agent has a built-in search tool** (web_search, MCP, etc.), the SKILL.md instructs the agent to use that directly instead of this script.
 
 ## Other API costs
 
@@ -77,6 +87,14 @@ python3 scripts/filter.py --input candidates-raw.txt --out candidates-filtered.t
 # Web search gate (optional — uses whatever search API you have configured)
 python3 scripts/websearch_gate.py --input candidates-filtered.txt --out candidates-gated.txt
 ```
+
+## Security
+
+- **No secrets are prompted for, logged, or stored** — API keys come from your existing env vars or MCP configs
+- **MCP config scanning is read-only** — the script reads your config files to find search tools you've already set up. Keys are only sent to their matching API endpoint (e.g. Brave key → Brave API). Nothing is printed, logged, or sent elsewhere.
+- **`--detect` never prints keys** — only tool names and config file paths
+- **Outbound network calls are limited to:** Datamuse (free, no auth), public package registries (npm/PyPI/crates.io/GitHub), and your chosen search API
+- **The only data that leaves your machine** is search queries containing the candidate names
 
 ## License
 
