@@ -9,6 +9,7 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 import time
 import urllib.parse
@@ -205,12 +206,19 @@ def filter_basic(candidates: set[str], min_len: int, max_len: int) -> list[str]:
 def main():
     parser = argparse.ArgumentParser(description="Generate naming candidates via Datamuse API")
     parser.add_argument("--seeds", type=str, default=None, help="Comma-separated seed words (default: built-in list)")
-    parser.add_argument(
-        "--out", type=str, default="candidates-raw.txt", help="Output file (default: candidates-raw.txt)"
-    )
+    parser.add_argument("--out", type=str, default="candidates-raw.txt", help="Output filename (placed in output dir)")
+    parser.add_argument("--out-dir", type=str, default=None, help="Output directory (default: ./namer-output/)")
     parser.add_argument("--min-len", type=int, default=4, help="Minimum name length")
     parser.add_argument("--max-len", type=int, default=12, help="Maximum name length")
     args = parser.parse_args()
+
+    from output import get_output_dir, print_output_summary, resolve_output_path
+
+    # If --out is a bare filename, put it in the output dir. If it's a path, use as-is.
+    if os.sep not in args.out and not os.path.dirname(args.out):
+        args.out = resolve_output_path(args.out, args.out_dir)
+    else:
+        get_output_dir(args.out_dir)  # still create output dir for consistency
 
     seeds = args.seeds.split(",") if args.seeds else DEFAULT_SEEDS
 
@@ -244,7 +252,11 @@ def main():
         for c in filtered:
             f.write(c + "\n")
 
-    print(f"Wrote {len(filtered)} candidates to {args.out}", file=sys.stderr)
+    print_output_summary(
+        [
+            (f"{len(filtered)} candidates", args.out),
+        ]
+    )
 
 
 if __name__ == "__main__":

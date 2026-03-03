@@ -77,16 +77,23 @@ No search API? The web gate step is optional — skip it and go straight from fi
 
 ## Usage (manual)
 
+All output goes to `./namer-output/` by default. Override with `--out-dir` or `NAMER_OUTPUT_DIR` env var.
+
 ```bash
-# Generate candidates
-python3 scripts/generate.py --seeds "memory,recall,mind,trace" --out candidates-raw.txt
+# Generate candidates → namer-output/candidates-raw.txt
+python3 scripts/generate.py --seeds "memory,recall,mind,trace"
 
-# Filter by namespace availability
-python3 scripts/filter.py --input candidates-raw.txt --out candidates-filtered.txt
+# Filter by namespace → namer-output/candidates-filtered.txt
+python3 scripts/filter.py
 
-# Web search gate (optional — uses whatever search API you have configured)
-python3 scripts/websearch_gate.py --input candidates-filtered.txt --out candidates-gated.txt
+# Web search gate (optional) → namer-output/candidates-gated.txt
+python3 scripts/websearch_gate.py --input candidates-filtered.txt
+
+# See what search providers are available
+python3 scripts/websearch_gate.py --detect
 ```
+
+Each script prints the full path of its output files when finished. Scripts also auto-resolve `--input` from the output dir, so you can chain them without full paths.
 
 ## Security
 

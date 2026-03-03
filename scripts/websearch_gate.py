@@ -415,7 +415,10 @@ def check_product_presence(provider: str, env_vals: dict, name: str) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="Web search gate for naming candidates")
     parser.add_argument("--input", type=str, help="Input candidates file")
-    parser.add_argument("--out", type=str, default="candidates-gated.txt")
+    parser.add_argument(
+        "--out", type=str, default="candidates-gated.txt", help="Output filename (placed in output dir)"
+    )
+    parser.add_argument("--out-dir", type=str, default=None, help="Output directory (default: ./namer-output/)")
     parser.add_argument(
         "--provider",
         type=str,
@@ -460,6 +463,18 @@ def main():
 
     if not args.input:
         parser.error("--input is required (or use --detect)")
+
+    from output import print_output_summary, resolve_output_path
+
+    # Resolve output paths
+    if os.sep not in args.out and not os.path.dirname(args.out):
+        args.out = resolve_output_path(args.out, args.out_dir)
+
+    # Resolve input — check output dir if not found in cwd
+    if not os.path.exists(args.input) and os.sep not in args.input:
+        alt = resolve_output_path(args.input, args.out_dir)
+        if os.path.exists(alt):
+            args.input = alt
 
     # Resolve provider
     if args.provider and args.api_key:
@@ -517,7 +532,7 @@ def main():
             f.write(f"{r['name']}\t{r['verdict']}\n")
 
     # Write full report
-    report_out = args.out.replace(".txt", "-report.md")
+    report_out = resolve_output_path(os.path.basename(args.out).replace(".txt", "-report.md"), args.out_dir)
     with open(report_out, "w") as f:
         f.write("# Web Search Gate Results\n\n")
         f.write(f"Provider: {PROVIDERS[provider]['name']}\n\n")
@@ -536,8 +551,13 @@ def main():
                 f.write(f"  - {tr['title']}: {tr['url']}\n")
 
     print(f"\n{len(clear)} clear, {len(caution)} caution, {len(bumped)} bumped", file=sys.stderr)
-    print(f"Survivors → {args.out}", file=sys.stderr)
-    print(f"Full report → {report_out}", file=sys.stderr)
+
+    print_output_summary(
+        [
+            (f"{len(clear) + len(caution)} survivors", args.out),
+            ("Full report", report_out),
+        ]
+    )
 
 
 if __name__ == "__main__":

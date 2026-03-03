@@ -12,6 +12,7 @@ Outputs TSV: name \t npm \t pypi \t crates \t github_count \t verdict
 
 import argparse
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -84,6 +85,7 @@ def main():
     parser = argparse.ArgumentParser(description="Filter naming candidates by namespace availability")
     parser.add_argument("--input", type=str, default="candidates-raw.txt")
     parser.add_argument("--out", type=str, default="candidates-filtered.txt")
+    parser.add_argument("--out-dir", type=str, default=None, help="Output directory (default: ./namer-output/)")
     parser.add_argument("--delay", type=float, default=0.3, help="Delay between API calls (seconds)")
     parser.add_argument("--limit", type=int, default=None, help="Max candidates to check (for testing)")
     parser.add_argument(
@@ -93,6 +95,18 @@ def main():
         help="Comma-separated keywords: only check candidates containing one of these substrings",
     )
     args = parser.parse_args()
+
+    from output import print_output_summary, resolve_output_path
+
+    # Resolve output paths
+    if os.sep not in args.out and not os.path.dirname(args.out):
+        args.out = resolve_output_path(args.out, args.out_dir)
+
+    # Resolve input — check output dir if not found in cwd
+    if not os.path.exists(args.input) and os.sep not in args.input:
+        alt = resolve_output_path(args.input, args.out_dir)
+        if os.path.exists(alt):
+            args.input = alt
 
     with open(args.input) as f:
         candidates = [line.strip() for line in f if line.strip()]
@@ -118,7 +132,7 @@ def main():
             clean.append(result)
 
     # Write full results as TSV
-    tsv_out = args.out.replace(".txt", "-full.tsv")
+    tsv_out = resolve_output_path(os.path.basename(args.out).replace(".txt", "-full.tsv"), args.out_dir)
     with open(tsv_out, "w") as f:
         f.write("name\tnpm\tpypi\tcrates\tgithub\tverdict\n")
         for r in results:
@@ -132,8 +146,13 @@ def main():
     taken = sum(1 for r in results if r["verdict"] == "TAKEN")
     check = sum(1 for r in results if r["verdict"] == "CHECK")
     print(f"\nResults: {len(clean)} clean, {check} needs-check, {taken} taken", file=sys.stderr)
-    print(f"Clean candidates → {args.out}", file=sys.stderr)
-    print(f"Full results → {tsv_out}", file=sys.stderr)
+
+    print_output_summary(
+        [
+            (f"{len(clean)} clean candidates", args.out),
+            ("Full results (TSV)", tsv_out),
+        ]
+    )
 
 
 if __name__ == "__main__":

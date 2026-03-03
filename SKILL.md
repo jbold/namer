@@ -84,6 +84,24 @@ Present top 10-20 with rationale. Use polarization as a positive signal.
 | — Google Custom Search | Free tier: 100/day | `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` |
 | — SearXNG | Free (self-hosted) | `SEARXNG_URL` |
 
+## Output
+
+All scripts write to `./namer-output/` by default (created automatically). Override with `--out-dir` or the `NAMER_OUTPUT_DIR` env var. Each script prints the full path of its output files to stderr when finished.
+
+Pipeline files in output dir:
+- `candidates-raw.txt` — Step 2 output (all generated candidates)
+- `candidates-filtered.txt` — Step 3 output (namespace-clean candidates)
+- `candidates-filtered-full.tsv` — Step 3 full results with verdicts
+- `candidates-gated.txt` — Step 4 output (web search survivors)
+- `candidates-gated-report.md` — Step 4 detailed report with evidence
+
+Each script also checks the output dir when resolving `--input`, so you can chain them without specifying full paths:
+```bash
+python3 scripts/generate.py --seeds "spark,drift,pulse"
+python3 scripts/filter.py                              # finds candidates-raw.txt in namer-output/
+python3 scripts/websearch_gate.py --input candidates-filtered.txt  # same
+```
+
 ## Tips
 - Append manual candidates (foreign words, historical references, invented words) to raw file before filtering
 - Run multiple generation passes with different seed clusters (technical, emotional, metaphorical, physical)
