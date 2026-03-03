@@ -25,6 +25,18 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+# --- Time formatting ---
+
+
+def _format_eta(seconds: float) -> str:
+    if seconds < 60:
+        return f"{int(seconds)}s"
+    elif seconds < 3600:
+        return f"{int(seconds // 60)}m {int(seconds % 60)}s"
+    else:
+        return f"{int(seconds // 3600)}h {int(seconds % 3600 // 60)}m"
+
+
 # --- Environment Detection ---
 
 AGENT_ENVIRONMENTS = {
@@ -500,22 +512,60 @@ def main():
     else:
         provider, env_vals = discover_provider()
 
-    print(f"Using search provider: {PROVIDERS[provider]['name']}", file=sys.stderr)
+    print(f"🔎 Using search provider: {PROVIDERS[provider]['name']}", file=sys.stderr)
+
+    # Validate input
+    if not os.path.exists(args.input):
+        print(f"❌ Input file not found: {args.input}", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Expected: candidates-filtered.txt from the filter step.", file=sys.stderr)
+        print("Run: python3 scripts/filter.py", file=sys.stderr)
+        sys.exit(1)
 
     with open(args.input) as f:
         candidates = [line.strip().split("\t")[0] for line in f if line.strip()]
 
-    print(f"Web search gate: checking {len(candidates)} candidates...", file=sys.stderr)
+    if not candidates:
+        print("❌ Input file is empty. No candidates to check.", file=sys.stderr)
+        sys.exit(1)
+
+    # Estimate
+    est_seconds = len(candidates) * args.delay
+    print("", file=sys.stderr)
+    print(f"🔍 Web search gate: {len(candidates)} candidates", file=sys.stderr)
+    print(f"⏱️  Estimated time: {_format_eta(est_seconds)}", file=sys.stderr)
+    print("", file=sys.stderr)
 
     clear = []
     caution = []
     bumped = []
+    errors = 0
+    start_time = time.time()
 
     for i, name in enumerate(candidates):
-        result = check_product_presence(provider, env_vals, name)
+        try:
+            result = check_product_presence(provider, env_vals, name)
+        except Exception as e:
+            errors += 1
+            print(f"  ⚠️  [{i + 1}/{len(candidates)}] {name}: ERROR ({e})", file=sys.stderr)
+            if errors >= 10:
+                print("", file=sys.stderr)
+                print(f"❌ Too many errors ({errors}). Stopping.", file=sys.stderr)
+                print("   Search API may be rate-limiting. Try increasing --delay.", file=sys.stderr)
+                break
+            continue
+
         status = result["verdict"]
         signals = ", ".join(list(set(result["signals"]))[:3]) if result["signals"] else "none"
-        print(f"  [{i + 1}/{len(candidates)}] {name}: {status} (signals: {signals})", file=sys.stderr)
+
+        # Progress with ETA
+        elapsed = time.time() - start_time
+        rate = (i + 1) / max(elapsed, 0.1)
+        remaining = (len(candidates) - i - 1) / max(rate, 0.001)
+        print(
+            f"  [{i + 1}/{len(candidates)}] {name}: {status} (signals: {signals}) | ETA: {_format_eta(remaining)}",
+            file=sys.stderr,
+        )
 
         if status == "CLEAR":
             clear.append(result)
@@ -550,8 +600,17 @@ def main():
             for tr in r["top_results"][:2]:
                 f.write(f"  - {tr['title']}: {tr['url']}\n")
 
-    print(f"\n{len(clear)} clear, {len(caution)} caution, {len(bumped)} bumped", file=sys.stderr)
+    # Summary
+    print("", file=sys.stderr)
+    if errors >= 10:
+        print(f"⚠️  Stopped after {errors} errors. Partial results saved.", file=sys.stderr)
+    else:
+        print(f"✅ Done! {len(clear)} clear, {len(caution)} caution, {len(bumped)} bumped", file=sys.stderr)
 
+    if errors > 0 and errors < 10:
+        print(f"   {errors} errors (skipped)", file=sys.stderr)
+
+    print("", file=sys.stderr)
     print_output_summary(
         [
             (f"{len(clear) + len(caution)} survivors", args.out),

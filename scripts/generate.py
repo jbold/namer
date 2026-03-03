@@ -222,41 +222,61 @@ def main():
 
     seeds = args.seeds.split(",") if args.seeds else DEFAULT_SEEDS
 
-    print(f"Generating candidates from {len(seeds)} seeds...", file=sys.stderr)
+    print("", file=sys.stderr)
+    print(f"🌱 Starting generation with {len(seeds)} seeds: {', '.join(seeds[:10])}", file=sys.stderr)
+    if len(seeds) > 10:
+        print(f"   ...and {len(seeds) - 10} more", file=sys.stderr)
+    print("", file=sys.stderr)
 
     # Phase 1: Semantic expansion
-    print("Phase 1: Semantic expansion via Datamuse...", file=sys.stderr)
-    semantic = generate_semantic(seeds)
-    print(f"  → {len(semantic)} raw semantic candidates", file=sys.stderr)
+    print("Phase 1/3: Semantic expansion via Datamuse API...", file=sys.stderr)
+    try:
+        semantic = generate_semantic(seeds)
+        print(f"  ✅ {len(semantic)} semantic candidates", file=sys.stderr)
+    except Exception as e:
+        print(f"  ❌ Datamuse API error: {e}", file=sys.stderr)
+        print("     Check your internet connection and try again.", file=sys.stderr)
+        sys.exit(1)
 
     # Phase 2: Compound generation
-    print("Phase 2: Compound generation...", file=sys.stderr)
+    print("Phase 2/3: Compound generation...", file=sys.stderr)
     base_words = list(semantic) + seeds
     compounds = generate_compounds(base_words)
-    print(f"  → {len(compounds)} compound candidates", file=sys.stderr)
+    print(f"  ✅ {len(compounds)} compound candidates", file=sys.stderr)
 
     # Phase 3: Morpheme blends
-    print("Phase 3: Morpheme blends...", file=sys.stderr)
+    print("Phase 3/3: Morpheme blends...", file=sys.stderr)
     blends = generate_morpheme_blends(seeds + list(semantic)[:50])
-    print(f"  → {len(blends)} blend candidates", file=sys.stderr)
+    print(f"  ✅ {len(blends)} blend candidates", file=sys.stderr)
 
     # Combine and filter
     all_candidates = semantic | compounds | blends | set(seeds)
-    print(f"Total raw: {len(all_candidates)}", file=sys.stderr)
-
     filtered = filter_basic(all_candidates, args.min_len, args.max_len)
-    print(f"After basic filter: {len(filtered)}", file=sys.stderr)
 
     # Write output
     with open(args.out, "w") as f:
         for c in filtered:
             f.write(c + "\n")
 
+    print("", file=sys.stderr)
+    print(
+        f"✅ Done! {len(all_candidates)} raw → {len(filtered)} after filtering ({args.min_len}-{args.max_len} chars, alpha only)",
+        file=sys.stderr,
+    )
+
     print_output_summary(
         [
             (f"{len(filtered)} candidates", args.out),
         ]
     )
+
+    # Next step guidance
+    print("▶️  Next: python3 scripts/filter.py", file=sys.stderr)
+    if len(filtered) > 500:
+        print(
+            f"💡 {len(filtered)} is a lot! Consider: python3 scripts/filter.py --pre-filter 'key,words' --limit 500",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":

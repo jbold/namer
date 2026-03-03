@@ -1,109 +1,122 @@
 ---
 name: namer
-description: Generate, filter, and evaluate product/brand names. Use when naming a product, project, company, or feature. Generates 1000+ candidates via Datamuse API (zero LLM tokens), filters by namespace availability (npm/PyPI/crates/GitHub), web search gates for existing products, then evaluates finalists against strategic criteria and sound symbolism. Token-efficient — LLM only touches the final 20-50 survivors.
+description: Generate, filter, and evaluate product/brand names for any domain — tech, retail, food, services, anything. Generates 1000+ candidates via Datamuse API (zero LLM tokens), mechanically shortlists by pronounceability, then the LLM picks top names and web-searches them for conflicts. Token-efficient — LLM only sees ~200 pre-filtered survivors.
 ---
 
 # Namer
 
-Structured naming pipeline. Volume generation (zero LLM tokens) → automated filtering → strategic evaluation.
+Structured naming pipeline. Works for any product, company, or brand — not just software.
+
+**Pipeline:** Strategy → Generate (free) → Shortlist (free) → LLM Pick → Availability Check → Present
 
 ## Process Overview
 
-### Step 1: Define the Strategy
-Before generating, work through strategic discovery with the user. See `references/diamond-framework.md` for the full framework. Four questions:
-- **Vision** — What does success look like? How should the market perceive us?
-- **Advantage** — What sets us apart? What's our moat?
-- **Gaps** — What capabilities, trust signals, or adoption requirements are we missing?
-- **Message** — What feeling or experience should the name evoke?
+### Step 1: Discovery (5 questions)
+
+Ask these in plain language, adapted to the user's product:
+
+1. **Vision** — What is this thing? What does it do, who's it for, and what does success look like?
+2. **Advantage** — What makes it different from the competition? What's the moat?
+3. **Gaps** — What's missing right now? (early stage, no users, credibility, resources, etc.)
+4. **Message** — What should the name *feel* like? (serious/scientific? playful/accessible? futuristic? warm? edgy?)
+5. **Domain** — What industry or category is this? (e.g. "coffee shop", "npm package", "AI tool", "law firm", "band name")
+
+The domain answer is critical — it determines what you search for in the availability check. A name that's clean for a coffee shop might be taken for a SaaS tool.
+
+See `references/diamond-framework.md` for the full strategic framework.
 
 ### Step 2: Generate (zero LLM tokens)
+
+Tell the user: *"Default generates ~10,000 candidates from your seeds. That's the full creative blast — more candidates means more hidden gems. The expensive part is later steps, not generation. Want the full set, or should I cap it? (500 is plenty for a first pass.)"*
+
 ```bash
-python3 scripts/generate.py --seeds "memory,recall,mind,trace" --out candidates-raw.txt
+python3 scripts/generate.py --seeds "your,seed,words,here"
 ```
 - Datamuse API: semantic neighbors, sound-alikes, triggered-by associations
 - Compound generation: prefix+base, base+suffix, base+base
 - Morpheme blends: portmanteau candidates
-- Custom seeds: pass `--seeds` with domain-specific terms
-- Output: ~1000-3000 candidates in a flat text file
+- `--limit N` caps output to top N candidates (by alphabetical; use shortlist for quality ranking)
+- Output: `namer-output/candidates-raw.txt`
 
-Add manual candidates (foreign words, metaphors, invented words) by appending to the raw file before filtering.
+Tip: Add manual candidates (foreign words, metaphors, invented words) by appending to the raw file before shortlisting.
 
-### Step 3: Filter by Namespace (zero LLM tokens)
+### Step 3: Shortlist (zero LLM tokens)
+
+Mechanically filter 10K → ~200 candidates so the LLM never sees the full list.
+
 ```bash
-python3 scripts/filter.py --input candidates-raw.txt --out candidates-filtered.txt
+python3 scripts/shortlist.py
 ```
-- Checks: npm, PyPI, crates.io, GitHub repo count
-- Verdicts: CLEAN / LIKELY_OK / CHECK / TAKEN
-- Use `--pre-filter "mem,rec,mind"` to only check candidates containing specific substrings (saves API calls on large sets)
-- Use `--limit 100` for testing
-- Full results in TSV for review
+- Scores by: pronounceability, ease of spelling (penalizes ambiguous phonemes like "ph"/"gh"/"ck"), length sweetspot (5-9 chars), letter variety, strong starts
+- `--top N` controls how many survive (default: 200)
+- `--pre-filter "key,words"` to only keep candidates containing specific substrings
+- Output: `namer-output/candidates-shortlist.txt` (one per line, scored)
 
-### Step 4: Web Search Gate (zero LLM tokens)
+### Step 4: LLM Pick (this is you)
 
-**If you have a built-in search tool** (web_search, MCP search server, browser search, etc.), use it directly. For each candidate, search the name and check for these product signals:
-- Keywords: app, software, platform, saas, tool, service, download, pricing, sign up, login, api, sdk, startup, inc, ltd, gmbh, solutions, technologies, product, features, demo, get started, free trial, enterprise, cloud
-- Domain signals: .io, .ai, .app
-- Verdict: 0-1 signals = CLEAR, 1 signal = CAUTION, 2+ signals = BUMPED (existing product, name is dead)
+Read `namer-output/candidates-shortlist.txt` (~200 names). Using the strategy from Step 1, rank them and pick your **top 10** by:
 
-**If no search tool is available**, use the standalone script:
-```bash
-python3 scripts/websearch_gate.py --input candidates-filtered.txt --out candidates-gated.txt
-```
-- Auto-discovers environment (Claude Code, OpenClaw, Cursor, etc.) and available search providers
-- Checks MCP configs, env vars, and CLI tools in priority order
-- If nothing found, prompts user to configure a search provider (Brave recommended as default)
-- Outputs report with evidence (top results + signals detected)
-- Rate limit: use `--delay 1.1` for free tiers
-
-### Step 5: Evaluate (LLM, small batch only)
-Load `references/diamond-framework.md`. Score the filtered survivors against:
-1. Strategic alignment (Vision, Advantage, Gaps, Message from Step 1)
-2. Sound symbolism (V=vibrant, B=reliable, Z=attention, X=innovation)
+1. Strategic alignment (Vision, Advantage, Gaps, Message)
+2. Sound symbolism (see `references/diamond-framework.md`)
 3. Compound multiplier effect (1+1=3?)
-4. Competitor test: "Your competitor just launched with this name — reaction?"
+4. Gut check: "Your competitor just launched with this name — reaction?"
 5. Discomfort signal: if it feels safe, it's probably wrong
-6. Pronounceability, memorability, distinctiveness
 
-Present top 10-20 with rationale. Use polarization as a positive signal.
+Keep positions 11-20 as a **bench** — you'll pull from these if any top 10 get bumped.
 
-### Step 6: Validate
-- Web search for trademark conflicts in target classes
-- Domain availability (but don't let it drive the decision)
-- Cross-language/culture check (does it mean something bad somewhere?)
+**Token budget:** ~200 names × ~8 chars = ~1,600 tokens input. Cheap.
+
+### Step 5: Availability Check (you + web search)
+
+Check your top 10 in order. For each, web search: `"[name] [domain from Step 1]"`
+
+Example: if domain is "quantum computing demo" and name is "qubitly", search `"qubitly quantum computing"`.
+
+**Decision per name:**
+- Nothing relevant in results → ✅ CLEAR — stays on the list
+- Weak match (blog post, unrelated product) → ⚠️ CAUTION — stays, note it
+- Existing product/company in same space → ❌ BUMP — remove it, pull the next name from your bench (position 11, then 12, etc.) and check that one too
+
+Keep going until you have 10 clear/caution names.
+
+**Optional extras** (suggest to user, don't assume):
+- Domain availability: check .com/.io for the finalists
+- Trademark: search USPTO (tmsearch.uspto.gov) for the top 3
+- Social handles: check @name on X, Instagram, GitHub
+- **Software projects specifically:** run `python3 scripts/filter.py` to check npm/PyPI/crates.io/GitHub
+
+### Step 6: Present Top 10
+
+For each finalist:
+- The name
+- Why it works (tied to strategy)
+- Sound symbolism notes
+- Any cautions from the availability check
+- Suggested domain if checked
 
 ## API Costs
 
-| API | Cost | Key Required? |
-|-----|------|---------------|
-| Datamuse (generation) | Free, no limits | No |
-| npm / PyPI / crates.io (filtering) | Free, public APIs | No |
-| GitHub Search (filtering) | Free, rate-limited | No |
-| **Web search gate** (any one of:) | | |
-| — Brave Search | Free tier: 2000/month | `BRAVE_API_KEY` |
-| — Serper (Google) | $2.50/1000 queries | `SERPER_API_KEY` |
-| — Google Custom Search | Free tier: 100/day | `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` |
-| — SearXNG | Free (self-hosted) | `SEARXNG_URL` |
+| Step | API | Cost | Key Required? |
+|------|-----|------|---------------|
+| Generate | Datamuse | Free, no limits | No |
+| Shortlist | None (local) | Free | No |
+| LLM Pick | Your model | ~1,600 tokens in | N/A |
+| Availability | Your search tool | ~20 queries | Depends |
+| Filter (optional) | npm/PyPI/crates/GitHub | Free, rate-limited | No |
 
 ## Output
 
-All scripts write to `./namer-output/` by default (created automatically). Override with `--out-dir` or the `NAMER_OUTPUT_DIR` env var. Each script prints the full path of its output files to stderr when finished.
+All scripts write to `./namer-output/` by default. Override with `--out-dir` or `NAMER_OUTPUT_DIR` env var. Each script prints output file paths when finished.
 
-Pipeline files in output dir:
-- `candidates-raw.txt` — Step 2 output (all generated candidates)
-- `candidates-filtered.txt` — Step 3 output (namespace-clean candidates)
-- `candidates-filtered-full.tsv` — Step 3 full results with verdicts
-- `candidates-gated.txt` — Step 4 output (web search survivors)
-- `candidates-gated-report.md` — Step 4 detailed report with evidence
+Pipeline files:
+- `candidates-raw.txt` — Step 2 (all generated candidates)
+- `candidates-shortlist.txt` — Step 3 (mechanically scored survivors)
+- `candidates-filtered.txt` — Optional (npm/PyPI/crates/GitHub results, software only)
 
-Each script also checks the output dir when resolving `--input`, so you can chain them without specifying full paths:
-```bash
-python3 scripts/generate.py --seeds "spark,drift,pulse"
-python3 scripts/filter.py                              # finds candidates-raw.txt in namer-output/
-python3 scripts/websearch_gate.py --input candidates-filtered.txt  # same
-```
+Scripts auto-resolve `--input` from the output dir, so you can chain without full paths.
 
 ## Tips
-- Append manual candidates (foreign words, historical references, invented words) to raw file before filtering
 - Run multiple generation passes with different seed clusters (technical, emotional, metaphorical, physical)
 - Compounds outperform single words for memorability
 - Don't evaluate during generation — separate the phases strictly
+- The domain question changes everything — "atlas" is clear for a coffee shop, taken for software

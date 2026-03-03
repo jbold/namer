@@ -2,7 +2,7 @@
 
 ## Strategic Discovery
 
-Before generating names, work through these four questions with the user. These define the space the name must occupy.
+Before generating names, work through these five questions with the user. These define the space the name must occupy.
 
 ```
        VISION
@@ -13,12 +13,19 @@ Before generating names, work through these four questions with the user. These 
       \      /
       GAPS
      (bottom)
+       +
+     DOMAIN
 ```
 
-- **Vision** — What does success look like? How should the market perceive us?
-- **Advantage** — What sets us apart from competitors? What's our moat?
-- **Gaps** — What capabilities, trust signals, or adoption requirements are we missing?
-- **Message** — What feeling, behavior, or experience should the name evoke?
+1. **Vision** — What is this thing? What does it do, who's it for, and what does success look like?
+2. **Advantage** — What makes it different from the competition? What's the moat?
+3. **Gaps** — What's missing right now? Early stage, no users, credibility, resources, etc.
+4. **Message** — What should the name *feel* like? Serious/scientific? Playful/accessible? Futuristic? Something else?
+5. **Domain** — What industry or category is this? Examples: "coffee shop", "npm package", "AI tool", "law firm", "band name", "SaaS platform"
+
+The domain answer is critical for availability checking. A name might be clear for a coffee shop but taken for a SaaS tool. The agent appends the domain to web searches: `"[name] [domain]"`.
+
+Make questions concrete and conversational — adapt to the product context. Avoid abstract strategy language.
 
 ## Key Principles
 
