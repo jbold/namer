@@ -27,21 +27,14 @@ Generates 1000+ candidates using free APIs, mechanically shortlists by quality, 
 This skill follows the [Agent Skills](https://agentskills.io) open standard.
 
 ```bash
-git clone https://github.com/jbold/namer.git
-cd namer
-```
-
-Then copy it where your agent looks for skills:
-
-```bash
 # Claude Code — personal (available in all projects)
-cp -r . ~/.claude/skills/namer
+git clone https://github.com/jbold/namer.git ~/.claude/skills/namer
 
 # Claude Code — per-project only
-cp -r . .claude/skills/namer
+git clone https://github.com/jbold/namer.git .claude/skills/namer
 
 # OpenClaw
-cp -r . ~/openclaw/skills/namer
+git clone https://github.com/jbold/namer.git ~/openclaw/skills/namer
 ```
 
 Or just point any agent at `SKILL.md` — the scripts are standalone Python, no framework needed.
