@@ -1,0 +1,19 @@
+# Generated output files
+candidates-*.txt
+candidates-*.tsv
+*-report.md
+*-full.tsv
+
+# Editor temps
+.~lock.*
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
