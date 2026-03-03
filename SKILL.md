@@ -112,15 +112,22 @@ For each finalist:
 - Any cautions from the availability check
 - Suggested domain if checked
 
-## API Costs
+## Token & API Costs
 
-| Step | API | Cost | Key Required? |
-|------|-----|------|---------------|
-| Generate | Datamuse | Free, no limits | No |
-| Shortlist | None (local) | Free | No |
-| LLM Pick | Your model | ~1,600 tokens in | N/A |
-| Availability | Your search tool | ~20 queries | Depends |
-| Filter (optional) | npm/PyPI/crates/GitHub | Free, rate-limited | No |
+**Scripts (zero LLM tokens):**
+- `generate.py` — Datamuse API, free, no key, no limits
+- `shortlist.py` — pure local Python, no API calls at all
+- `filter.py` — npm/PyPI/crates/GitHub, free (rate-limited), no key
+- `websearch_gate.py` — your search API (Brave free tier: 2000/month)
+
+**Agent steps (where tokens are spent):**
+- Discovery (5 questions + reading answers): ~500 tokens
+- Seed extraction from answers: ~300 tokens
+- LLM Pick (reading ~100 shortlisted names + ranking): ~1,300 tokens
+- Availability (web search × 10-15 names): ~2,000-3,000 tokens
+- Present top 10 with rationale: ~1,000 tokens
+
+**Total: ~5,000-6,000 tokens for the full pipeline.** The expensive work (generating 8K+ candidates, scoring, registry checks) is all free.
 
 ## Output
 
