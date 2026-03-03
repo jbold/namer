@@ -86,14 +86,20 @@ Keep positions 11-20 as a **bench** — you'll pull from these if any top 10 get
 
 ### Step 5: Availability Check (you + web search)
 
-Check your top 10 in order. For each, web search: `"[name] [domain from Step 1]"`
+Check your top 10 in order. Two searches per name:
 
-Example: if domain is "quantum computing demo" and name is "qubitly", search `"qubitly quantum computing"`.
+1. **Bare name search:** `"[name]"` — is the word already a brand/product anywhere?
+2. **Domain search:** `"[name] [domain from Step 1]"` — is it taken in this specific space?
+
+Example: for "qubitly" in quantum computing:
+- Search `"qubitly"` → nothing → good
+- Search `"qubitly quantum computing"` → nothing → ✅ CLEAR
 
 **Decision per name:**
-- Nothing relevant in results → ✅ CLEAR — stays on the list
-- Weak match (blog post, unrelated product) → ⚠️ CAUTION — stays, note it
+- Nothing relevant in either search → ✅ CLEAR — stays on the list
+- Bare name has some hits but not in same space → ⚠️ CAUTION — stays, note it
 - Existing product/company in same space → ❌ BUMP — remove it, pull the next name from your bench (position 11, then 12, etc.) and check that one too
+- Bare name is a common dictionary word with millions of results → ❌ BUMP — unownable in search/SEO
 
 Keep going until you have 10 clear/caution names.
 

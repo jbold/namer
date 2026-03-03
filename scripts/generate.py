@@ -74,14 +74,45 @@ SUFFIXES = [
 ]
 
 
+# Frequency threshold: words appearing more than this many times per million
+# in English text are "common" and make poor brand names (unownable, SEO nightmare).
+# < 1.0 = rare/invented (great), 1-5 = uncommon (ok), > 5.0 = common (suppress)
+FREQ_SUPPRESS = 5.0  # Hard suppress: too common to own
+FREQ_WARN = 1.0  # Flag but keep: borderline
+
+# Track frequency data for all words we see
+_word_frequencies: dict[str, float] = {}
+
+
+def _parse_frequency(tags: list[str]) -> float | None:
+    """Extract frequency from Datamuse tags like 'f:25.228'."""
+    for tag in tags:
+        if tag.startswith("f:"):
+            try:
+                return float(tag[2:])
+            except ValueError:
+                pass
+    return None
+
+
 def datamuse_query(params: dict, max_results: int = 50) -> list[str]:
-    """Query Datamuse API, return list of words."""
+    """Query Datamuse API, return list of words. Filters common words by frequency."""
     params["max"] = str(max_results)
+    params["md"] = "f"  # Request frequency metadata
     url = f"{DATAMUSE_BASE}?{urllib.parse.urlencode(params)}"
     try:
         with urllib.request.urlopen(url, timeout=10) as resp:
             data = json.loads(resp.read())
-            return [item["word"] for item in data]
+            results = []
+            for item in data:
+                word = item["word"]
+                freq = _parse_frequency(item.get("tags", []))
+                if freq is not None:
+                    _word_frequencies[word] = freq
+                    if freq > FREQ_SUPPRESS:
+                        continue  # Too common — skip
+                results.append(word)
+            return results
     except Exception as e:
         print(f"  Warning: Datamuse query failed ({params}): {e}", file=sys.stderr)
         return []
@@ -249,8 +280,8 @@ def main():
     blends = generate_morpheme_blends(seeds + list(semantic)[:50])
     print(f"  ✅ {len(blends)} blend candidates", file=sys.stderr)
 
-    # Combine and filter
-    all_candidates = semantic | compounds | blends | set(seeds)
+    # Combine and filter (don't add raw seeds — they're common words used as input, not output)
+    all_candidates = semantic | compounds | blends
     filtered = filter_basic(all_candidates, args.min_len, args.max_len)
 
     # Write output
@@ -258,11 +289,16 @@ def main():
         for c in filtered:
             f.write(c + "\n")
 
+    # Count how many common words were suppressed
+    suppressed = sum(1 for f in _word_frequencies.values() if f > FREQ_SUPPRESS)
+
     print("", file=sys.stderr)
     print(
         f"✅ Done! {len(all_candidates)} raw → {len(filtered)} after filtering ({args.min_len}-{args.max_len} chars, alpha only)",
         file=sys.stderr,
     )
+    if suppressed:
+        print(f"   🚫 {suppressed} common words suppressed (frequency > {FREQ_SUPPRESS}/million)", file=sys.stderr)
 
     print_output_summary(
         [
