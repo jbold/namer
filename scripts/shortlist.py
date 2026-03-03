@@ -4,11 +4,11 @@ Name shortlisting pipeline — Step 3: Mechanical quality scoring.
 Zero LLM tokens. Zero API calls. Pure heuristics.
 
 Scores candidates by pronounceability, length sweetspot, letter patterns,
-and uniqueness. Reduces ~10,000 candidates to ~200 high-quality survivors
+and uniqueness. Reduces ~10,000 candidates to ~100 high-quality survivors
 so the LLM never has to read the full list.
 
 Usage:
-    python3 shortlist.py [--input candidates-raw.txt] [--top 200]
+    python3 shortlist.py [--input candidates-raw.txt] [--top 100]
     python3 shortlist.py --pre-filter "quant,flux,ion"
 """
 
@@ -343,8 +343,8 @@ def main():
     parser.add_argument(
         "--top",
         type=int,
-        default=200,
-        help="Number of top candidates to keep (default: 200)",
+        default=100,
+        help="Number of top candidates to keep (default: 100)",
     )
     parser.add_argument(
         "--pre-filter",

@@ -1,6 +1,6 @@
 ---
 name: namer
-description: Generate, filter, and evaluate product/brand names for any domain — tech, retail, food, services, anything. Generates 1000+ candidates via Datamuse API (zero LLM tokens), mechanically shortlists by pronounceability, then the LLM picks top names and web-searches them for conflicts. Token-efficient — LLM only sees ~200 pre-filtered survivors.
+description: Generate, filter, and evaluate product/brand names for any domain — tech, retail, food, services, anything. Uses David Placek's Diamond Framework for strategy, Datamuse API for volume generation (zero LLM tokens), mechanical shortlisting to ~100 survivors, then LLM picks top 10 and web-searches for conflicts.
 ---
 
 # Namer
@@ -13,24 +13,42 @@ Structured naming pipeline. Works for any product, company, or brand — not jus
 
 ### Step 1: Discovery (5 questions)
 
-Ask these in plain language, adapted to the user's product:
+Ask these in order — domain first, then the four Diamond Framework questions:
 
-1. **What does winning look like?** — Describe the product, who it's for, and what success looks like.
-2. **What do we have to win?** — What's the advantage? What makes this different from the competition?
-3. **What do we need to win?** — What's missing? What gaps need to be filled? (stage, users, trust, resources)
-4. **What do we need to say?** — What should the name communicate? What should it *feel* like?
-5. **What's the domain?** — What industry or category? (e.g. "coffee shop", "npm package", "AI tool", "law firm")
+**0. What's the domain?** — "What industry or category is this?" (e.g. coffee shop, developer tool, law firm, band)
+> *Sets context for the other 4 questions. Gets prepended to availability searches later.*
 
-The domain answer is critical — it determines what you search for in the availability check. A name that's clean for a coffee shop might be taken for a SaaS tool.
+**1. What does winning look like?** — The vision. What is this, who's it for, what does success look like?
+> *Swiffer: "Build a mop-like device people pay a premium for. Make cleaning floors something people want to do."*
 
-See `references/diamond-framework.md` for the full strategic framework.
+**2. What do we have to win?** — The advantage. What assets or insights give you an edge?
+> *Swiffer: "P&G's Pampers diaper tech — a lighter, more effective tool using absorbent pads instead of water."*
+
+**3. What do we need to win?** — The gaps. What's missing? What must be overcome?
+> *Swiffer: "Avoid being seen as just another mop. People hate mopping — they need to see this as entirely new."*
+
+**4. What do we need to say?** — The message. What should the name communicate? What should it *feel* like?
+> *Swiffer: "Logical: efficient, quick, easy. Emotional: fun, joyful, light. Should sound like a quick, satisfying action."*
+
+See `references/diamond-framework.md` for the full framework with examples and sound symbolism.
+
+### Step 1b: Extract Seeds
+
+From the user's answers, extract **15-25 seed words**:
+- ~3-5 from domain (the industry's vocabulary)
+- ~3-5 from "winning" (vision/ambition words)
+- ~3-5 from "have to win" (differentiator words)
+- ~2-3 from "need to win" (aspiration/gap words)
+- ~3-5 from "need to say" (feeling/tone words)
+
+Example for Swiffer: `clean,sweep,wipe,swift,quick,light,easy,fun,snap,fresh,new,pad,glide,breeze,play,joy,smooth,action`
 
 ### Step 2: Generate (zero LLM tokens)
 
 Tell the user: *"Default generates ~10,000 candidates from your seeds. That's the full creative blast — more candidates means more hidden gems. The expensive part is later steps, not generation. Want the full set, or should I cap it? (500 is plenty for a first pass.)"*
 
 ```bash
-python3 scripts/generate.py --seeds "your,seed,words,here"
+python3 scripts/generate.py --seeds "clean,sweep,swift,quick,light,easy,fun,snap,fresh,glide,breeze,play,joy"
 ```
 - Datamuse API: semantic neighbors, sound-alikes, triggered-by associations
 - Compound generation: prefix+base, base+suffix, base+base
@@ -42,19 +60,19 @@ Tip: Add manual candidates (foreign words, metaphors, invented words) by appendi
 
 ### Step 3: Shortlist (zero LLM tokens)
 
-Mechanically filter 10K → ~200 candidates so the LLM never sees the full list.
+Mechanically filter 10K → ~100 candidates so the LLM never sees the full list.
 
 ```bash
 python3 scripts/shortlist.py
 ```
 - Scores by: pronounceability, ease of spelling (penalizes ambiguous phonemes like "ph"/"gh"/"ck"), length sweetspot (5-9 chars), letter variety, strong starts
-- `--top N` controls how many survive (default: 200)
+- `--top N` controls how many survive (default: 100, per Lexicon's "shortlist to 50-100" guideline)
 - `--pre-filter "key,words"` to only keep candidates containing specific substrings
 - Output: `namer-output/candidates-shortlist.txt` (one per line, scored)
 
 ### Step 4: LLM Pick (this is you)
 
-Read `namer-output/candidates-shortlist.txt` (~200 names). Using the strategy from Step 1, rank them and pick your **top 10** by:
+Read `namer-output/candidates-shortlist.txt` (~100 names). Using the strategy from Step 1, rank them and pick your **top 10** by:
 
 1. Strategic alignment (Vision, Advantage, Gaps, Message)
 2. Sound symbolism (see `references/diamond-framework.md`)
@@ -64,7 +82,7 @@ Read `namer-output/candidates-shortlist.txt` (~200 names). Using the strategy fr
 
 Keep positions 11-20 as a **bench** — you'll pull from these if any top 10 get bumped.
 
-**Token budget:** ~200 names × ~8 chars = ~1,600 tokens input. Cheap.
+**Token budget:** ~100 names × ~8 chars = ~800 tokens input. Cheap.
 
 ### Step 5: Availability Check (you + web search)
 

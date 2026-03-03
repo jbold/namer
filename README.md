@@ -4,16 +4,20 @@ An AI agent skill for structured product/brand naming — for anything, not just
 
 Generates 1000+ candidates using free APIs (zero LLM tokens), mechanically shortlists by quality, then the LLM picks the best and checks them against real-world conflicts.
 
-**Token-efficient by design** — the LLM only sees ~200 pre-filtered survivors.
+**Token-efficient by design** — the LLM only sees ~100 pre-filtered survivors.
 
 ## How it works
 
-1. **Discovery** — 5 questions: Vision, Advantage, Gaps, Message, Domain/Industry
-2. **Generate** — Datamuse API produces semantic neighbors, compounds, and blends (~1,000–10,000 candidates)
-3. **Shortlist** — Mechanical scoring (pronounceability, length, letter patterns) cuts to ~200
-4. **LLM picks top 20** — Agent reads the shortlist and selects based on strategy
-5. **Availability check** — Web search each pick with domain context (`"[name] [industry]"`)
-6. **Present top 10** — With rationale and evidence
+Uses David Placek's Diamond Framework (Lexicon Branding — Swiffer, Sonos, Azure, Vercel, Pentium).
+
+1. **Domain** — What industry/category? (sets context for everything)
+2. **Diamond questions** — What does winning look like? What do we have to win? What do we need to win? What do we need to say?
+3. **Extract seeds** — LLM pulls 15-25 seed words from the answers
+4. **Generate** — Datamuse API blasts seeds into ~1,000–10,000 candidates (zero tokens)
+5. **Shortlist** — Mechanical scoring (pronounceability, spellability, length, letter patterns) cuts to ~100
+6. **LLM picks top 10** — Reads shortlist, selects based on strategy, keeps 11-20 as bench
+7. **Availability check** — Web search `"[name] [industry]"`, bump conflicts, pull from bench
+8. **Present top 10** — With rationale and evidence
 
 ## Requirements
 
@@ -53,8 +57,8 @@ All output goes to `./namer-output/` by default. Override with `--out-dir` or `N
 python3 scripts/generate.py --seeds "spark,drift,pulse"
 
 # Shortlist by quality → namer-output/candidates-shortlist.txt
-python3 scripts/shortlist.py                     # default: top 200
-python3 scripts/shortlist.py --top 500           # keep more
+python3 scripts/shortlist.py                     # default: top 100
+python3 scripts/shortlist.py --top 200           # keep more
 python3 scripts/shortlist.py --pre-filter "flux"  # only score names containing "flux"
 
 # (Optional) Check software namespaces → namer-output/candidates-filtered.txt
