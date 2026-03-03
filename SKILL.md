@@ -45,7 +45,7 @@ Example for Swiffer: `clean,sweep,wipe,swift,quick,light,easy,fun,snap,fresh,new
 
 ### Step 2: Generate (zero LLM tokens)
 
-Tell the user: *"Default generates ~10,000 candidates from your seeds. That's the full creative blast — more candidates means more hidden gems. The expensive part is later steps, not generation. Want the full set, or should I cap it? (500 is plenty for a first pass.)"*
+Tell the user: *"Generating ~1,000 candidates from your seeds (recommended minimum). More candidates = more hidden gems in the shortlist. Want more? I can go up to 10,000."*
 
 ```bash
 python3 scripts/generate.py --seeds "clean,sweep,swift,quick,light,easy,fun,snap,fresh,glide,breeze,play,joy"
