@@ -1,28 +1,24 @@
 # Strategic Naming Framework
 
-## The Four Quadrants
+## Strategic Discovery
 
-Before generating names, answer these four questions with the user. These define the strategic space the name must occupy.
+Before generating names, work through these four questions with the user. These define the space the name must occupy.
 
 ```
-        WIN
+       VISION
        (top)
       /      \
-WHAT WE      WHAT WE
-NEED TO      HAVE TO
-SAY          WIN
-(left)       (right)
+  MESSAGE    ADVANTAGE
+  (left)     (right)
       \      /
-     WHAT WE
-     NEED TO
-       WIN
+      GAPS
      (bottom)
 ```
 
-- **Win** — What does winning look like? Market position, user perception.
-- **What we have to win** — Competitive landscape, differentiation, moat.
-- **What we need to win** — Capabilities, trust signals, adoption requirements.
-- **What we need to say** — The behavior/experience the name must evoke.
+- **Vision** — What does success look like? How should the market perceive us?
+- **Advantage** — What sets us apart from competitors? What's our moat?
+- **Gaps** — What capabilities, trust signals, or adoption requirements are we missing?
+- **Message** — What feeling, behavior, or experience should the name evoke?
 
 ## Key Principles
 

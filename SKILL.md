@@ -10,7 +10,11 @@ Structured naming pipeline. Volume generation (zero LLM tokens) → automated fi
 ## Process Overview
 
 ### Step 1: Define the Strategy
-Before generating, fill out the four strategic quadrants with the user. See `references/diamond-framework.md` for the full framework. Four questions: What does winning look like? What do we have to win? What do we need to win? What do we need to say?
+Before generating, work through strategic discovery with the user. See `references/diamond-framework.md` for the full framework. Four questions:
+- **Vision** — What does success look like? How should the market perceive us?
+- **Advantage** — What sets us apart? What's our moat?
+- **Gaps** — What capabilities, trust signals, or adoption requirements are we missing?
+- **Message** — What feeling or experience should the name evoke?
 
 ### Step 2: Generate (zero LLM tokens)
 ```bash
@@ -34,20 +38,21 @@ python3 scripts/filter.py --input candidates-raw.txt --out candidates-filtered.t
 - Use `--limit 100` for testing
 - Full results in TSV for review
 
-### Step 4: Web Search Gate (zero LLM tokens, requires Brave API key)
+### Step 4: Web Search Gate (zero LLM tokens, requires any web search API)
 ```bash
-BRAVE_API_KEY=... python3 scripts/websearch_gate.py --input candidates-filtered.txt --out candidates-gated.txt
+python3 scripts/websearch_gate.py --input candidates-filtered.txt --out candidates-gated.txt
 ```
-- Brave Search API checks each candidate for existing product/service presence
+- Auto-discovers your search provider from environment (Brave, Serper, Google CSE, or SearXNG)
 - Detects product signals: app, software, platform, pricing, sign up, .io, .ai, etc.
 - Verdicts: CLEAR (no products) / CAUTION (weak signal) / BUMPED (existing product)
 - **This is a hard gate**: if a web search returns existing products, the name is dead
 - Outputs report with evidence (top results + signals detected)
-- Brave free tier: 1 req/sec, use `--delay 1.1`
+- Rate limit: use `--delay 1.1` for free tiers
+- Override provider: `--provider serper --api-key KEY`
 
 ### Step 5: Evaluate (LLM, small batch only)
 Load `references/diamond-framework.md`. Score the filtered survivors against:
-1. Strategic quadrant alignment (from Step 1)
+1. Strategic alignment (Vision, Advantage, Gaps, Message from Step 1)
 2. Sound symbolism (V=vibrant, B=reliable, Z=attention, X=innovation)
 3. Compound multiplier effect (1+1=3?)
 4. Competitor test: "Your competitor just launched with this name — reaction?"
@@ -68,7 +73,11 @@ Present top 10-20 with rationale. Use polarization as a positive signal.
 | Datamuse (generation) | Free, no limits | No |
 | npm / PyPI / crates.io (filtering) | Free, public APIs | No |
 | GitHub Search (filtering) | Free, rate-limited | No |
-| Brave Search (web gate) | Free tier: 2000 queries/month | Yes (`BRAVE_API_KEY`) |
+| **Web search gate** (any one of:) | | |
+| — Brave Search | Free tier: 2000/month | `BRAVE_API_KEY` |
+| — Serper (Google) | $2.50/1000 queries | `SERPER_API_KEY` |
+| — Google Custom Search | Free tier: 100/day | `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` |
+| — SearXNG | Free (self-hosted) | `SEARXNG_URL` |
 
 ## Tips
 - Append manual candidates (foreign words, historical references, invented words) to raw file before filtering
