@@ -8,10 +8,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 from shortlist import (
     COMMON_WORDS,
+    WEIGHTS,
     score_candidate,
     score_length,
     score_letter_variety,
+    score_prefix_diversity,
     score_pronounceability,
+    score_sound_symbolism,
     score_spellability,
     score_starts_strong,
 )
@@ -111,6 +114,69 @@ class TestStartsStrong(unittest.TestCase):
         self.assertEqual(score_starts_strong("haze"), 0.5)
 
 
+class TestSoundSymbolism(unittest.TestCase):
+    def test_consistent_plosive_scores_high(self):
+        # "bolt" — all plosives, clear decisive personality
+        score = score_sound_symbolism("bolt")
+        self.assertGreaterEqual(score, 0.5)
+
+    def test_consistent_fricative_scores_high(self):
+        # "silva" — fricatives + liquids, smooth personality
+        score = score_sound_symbolism("silva")
+        self.assertGreaterEqual(score, 0.5)
+
+    def test_pharma_suffix_penalized(self):
+        # Names ending in common pharma suffixes should be penalized
+        pharma = score_sound_symbolism("certucid")
+        clean = score_sound_symbolism("certuva")
+        self.assertLess(pharma, clean)
+
+    def test_empty_string(self):
+        self.assertEqual(score_sound_symbolism(""), 0.0)
+
+    def test_single_char(self):
+        score = score_sound_symbolism("a")
+        self.assertGreaterEqual(score, 0.0)
+        self.assertLessEqual(score, 1.0)
+
+    def test_returns_bounded(self):
+        for name in ["spark", "silva", "certucid", "xylon", "breeze", "kraft"]:
+            score = score_sound_symbolism(name)
+            self.assertGreaterEqual(score, 0.0, f"{name} scored below 0")
+            self.assertLessEqual(score, 1.0, f"{name} scored above 1")
+
+
+class TestPrefixDiversity(unittest.TestCase):
+    def test_unique_prefix_scores_high(self):
+        prefix_counts = {"spar": 1, "bolt": 1, "silv": 1}
+        score = score_prefix_diversity("spark", prefix_counts)
+        self.assertEqual(score, 1.0)
+
+    def test_crowded_prefix_scores_low(self):
+        # >10 names share the same prefix
+        prefix_counts = {"cert": 15}
+        score = score_prefix_diversity("certuva", prefix_counts)
+        self.assertLess(score, 0.5)
+
+    def test_moderate_prefix_moderate_score(self):
+        prefix_counts = {"bolt": 5}
+        score = score_prefix_diversity("boltra", prefix_counts)
+        self.assertGreater(score, 0.3)
+        self.assertLess(score, 1.0)
+
+    def test_missing_prefix_scores_high(self):
+        # Name whose prefix isn't in the counts dict
+        prefix_counts = {"bolt": 5}
+        score = score_prefix_diversity("spark", prefix_counts)
+        self.assertEqual(score, 1.0)
+
+    def test_short_name_scores_high(self):
+        # Names shorter than 4 chars can't have a 4-char prefix collision
+        prefix_counts = {"abc": 20}
+        score = score_prefix_diversity("abc", prefix_counts)
+        self.assertEqual(score, 1.0)
+
+
 class TestScoreCandidate(unittest.TestCase):
     def test_returns_all_scores(self):
         result = score_candidate("revari")
@@ -119,17 +185,13 @@ class TestScoreCandidate(unittest.TestCase):
         self.assertIn("length", result)
         self.assertIn("variety", result)
         self.assertIn("start", result)
+        self.assertIn("sound", result)
+        self.assertIn("diversity", result)
         self.assertIn("total", result)
 
     def test_total_is_weighted(self):
         result = score_candidate("revari")
-        expected = (
-            result["pronounce"] * 0.30
-            + result["spelling"] * 0.25
-            + result["length"] * 0.20
-            + result["variety"] * 0.15
-            + result["start"] * 0.10
-        )
+        expected = sum(result[k] * WEIGHTS[k] for k in WEIGHTS)
         self.assertAlmostEqual(result["total"], round(expected, 3), places=3)
 
     def test_good_name_beats_bad_name(self):
