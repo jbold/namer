@@ -19,12 +19,12 @@ import json
 import os
 import sys
 import time
-import urllib.request
 import urllib.error
 import urllib.parse
-
+import urllib.request
 
 # --- Search Provider Implementations ---
+
 
 def search_brave(query: str, api_key: str) -> list[dict]:
     """Brave Search API."""
@@ -41,7 +41,7 @@ def search_brave(query: str, api_key: str) -> list[dict]:
             ]
     except urllib.error.HTTPError as e:
         if e.code == 429:
-            print(f"  Rate limited, waiting 2s...", file=sys.stderr)
+            print("  Rate limited, waiting 2s...", file=sys.stderr)
             time.sleep(2)
             return search_brave(query, api_key)
         raise
@@ -68,10 +68,7 @@ def search_serper(query: str, api_key: str) -> list[dict]:
 
 def search_google(query: str, api_key: str, cse_id: str) -> list[dict]:
     """Google Custom Search API."""
-    url = (
-        f"https://www.googleapis.com/customsearch/v1"
-        f"?q={urllib.parse.quote(query)}&key={api_key}&cx={cse_id}&num=5"
-    )
+    url = f"https://www.googleapis.com/customsearch/v1?q={urllib.parse.quote(query)}&key={api_key}&cx={cse_id}&num=5"
     req = urllib.request.Request(url)
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -155,11 +152,34 @@ def do_search(provider: str, env_vals: dict, query: str) -> list[dict]:
 # --- Product Presence Check ---
 
 PRODUCT_SIGNALS = [
-    "app", "software", "platform", "saas", "tool", "service",
-    "download", "pricing", "sign up", "login", "api", "sdk",
-    "startup", "inc", "ltd", "gmbh", "solutions", "technologies",
-    ".io", ".ai", ".app", "product", "features", "demo",
-    "get started", "free trial", "enterprise", "cloud"
+    "app",
+    "software",
+    "platform",
+    "saas",
+    "tool",
+    "service",
+    "download",
+    "pricing",
+    "sign up",
+    "login",
+    "api",
+    "sdk",
+    "startup",
+    "inc",
+    "ltd",
+    "gmbh",
+    "solutions",
+    "technologies",
+    ".io",
+    ".ai",
+    ".app",
+    "product",
+    "features",
+    "demo",
+    "get started",
+    "free trial",
+    "enterprise",
+    "cloud",
 ]
 
 
@@ -175,10 +195,7 @@ def check_product_presence(provider: str, env_vals: dict, name: str) -> dict:
         url = r.get("url", "").lower()
         combined = f"{title} {desc} {url}"
 
-        result["top_results"].append({
-            "title": r.get("title", "")[:80],
-            "url": r.get("url", "")[:80]
-        })
+        result["top_results"].append({"title": r.get("title", "")[:80], "url": r.get("url", "")[:80]})
 
         for signal in PRODUCT_SIGNALS:
             if signal in combined:
@@ -200,11 +217,16 @@ def main():
     parser = argparse.ArgumentParser(description="Web search gate for naming candidates")
     parser.add_argument("--input", type=str, required=True)
     parser.add_argument("--out", type=str, default="candidates-gated.txt")
-    parser.add_argument("--provider", type=str, default=None,
-                        choices=["brave", "serper", "google", "searxng"],
-                        help="Search provider (auto-detected from env if omitted)")
-    parser.add_argument("--api-key", type=str, default=None,
-                        help="API key (overrides env var for the selected provider)")
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default=None,
+        choices=["brave", "serper", "google", "searxng"],
+        help="Search provider (auto-detected from env if omitted)",
+    )
+    parser.add_argument(
+        "--api-key", type=str, default=None, help="API key (overrides env var for the selected provider)"
+    )
     parser.add_argument("--delay", type=float, default=1.1, help="Delay between searches (seconds)")
     args = parser.parse_args()
 
@@ -248,7 +270,7 @@ def main():
         result = check_product_presence(provider, env_vals, name)
         status = result["verdict"]
         signals = ", ".join(list(set(result["signals"]))[:3]) if result["signals"] else "none"
-        print(f"  [{i+1}/{len(candidates)}] {name}: {status} (signals: {signals})", file=sys.stderr)
+        print(f"  [{i + 1}/{len(candidates)}] {name}: {status} (signals: {signals})", file=sys.stderr)
 
         if status == "CLEAR":
             clear.append(result)

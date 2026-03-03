@@ -9,31 +9,69 @@ Usage:
 
 import argparse
 import json
-import time
-import urllib.request
-import urllib.parse
 import sys
+import time
+import urllib.parse
+import urllib.request
 from itertools import product as iterproduct
 
 DATAMUSE_BASE = "https://api.datamuse.com/words"
 DEFAULT_SEEDS = [
-    "memory", "recall", "remember", "trace", "echo", "mind",
-    "know", "think", "weave", "thread", "pattern", "connect",
-    "surface", "emerge", "find", "seek", "vault", "keep",
-    "spark", "light", "vision", "dream", "ghost", "soul",
-    "flow", "stream", "wave", "pulse", "glow", "drift"
+    "memory",
+    "recall",
+    "remember",
+    "trace",
+    "echo",
+    "mind",
+    "know",
+    "think",
+    "weave",
+    "thread",
+    "pattern",
+    "connect",
+    "surface",
+    "emerge",
+    "find",
+    "seek",
+    "vault",
+    "keep",
+    "spark",
+    "light",
+    "vision",
+    "dream",
+    "ghost",
+    "soul",
+    "flow",
+    "stream",
+    "wave",
+    "pulse",
+    "glow",
+    "drift",
 ]
 
 # Prefixes and suffixes for compound generation
-PREFIXES = [
-    "re", "un", "neo", "pre", "ever", "deep", "true",
-    "all", "pan", "omni", "syn", "meta"
-]
+PREFIXES = ["re", "un", "neo", "pre", "ever", "deep", "true", "all", "pan", "omni", "syn", "meta"]
 SUFFIXES = [
-    "mind", "trace", "flow", "spark", "vault", "keep",
-    "weave", "forge", "well", "root", "seed", "bloom",
-    "wake", "drift", "mark", "cast", "bind", "loom"
+    "mind",
+    "trace",
+    "flow",
+    "spark",
+    "vault",
+    "keep",
+    "weave",
+    "forge",
+    "well",
+    "root",
+    "seed",
+    "bloom",
+    "wake",
+    "drift",
+    "mark",
+    "cast",
+    "bind",
+    "loom",
 ]
+
 
 def datamuse_query(params: dict, max_results: int = 50) -> list[str]:
     """Query Datamuse API, return list of words."""
@@ -107,12 +145,44 @@ def filter_basic(candidates: set[str], min_len: int, max_len: int) -> list[str]:
     """Basic filtering: length, alpha-only, no common English words."""
     # Common words to exclude (too generic)
     common = {
-        "memory", "remember", "recall", "think", "mind", "know",
-        "brain", "head", "thought", "idea", "dream", "find",
-        "search", "look", "see", "feel", "sense", "learn",
-        "the", "and", "for", "that", "this", "with", "from",
-        "have", "has", "had", "was", "were", "been", "being",
-        "will", "would", "could", "should", "might", "shall",
+        "memory",
+        "remember",
+        "recall",
+        "think",
+        "mind",
+        "know",
+        "brain",
+        "head",
+        "thought",
+        "idea",
+        "dream",
+        "find",
+        "search",
+        "look",
+        "see",
+        "feel",
+        "sense",
+        "learn",
+        "the",
+        "and",
+        "for",
+        "that",
+        "this",
+        "with",
+        "from",
+        "have",
+        "has",
+        "had",
+        "was",
+        "were",
+        "been",
+        "being",
+        "will",
+        "would",
+        "could",
+        "should",
+        "might",
+        "shall",
     }
     filtered = []
     seen = set()
@@ -134,10 +204,10 @@ def filter_basic(candidates: set[str], min_len: int, max_len: int) -> list[str]:
 
 def main():
     parser = argparse.ArgumentParser(description="Generate naming candidates via Datamuse API")
-    parser.add_argument("--seeds", type=str, default=None,
-                        help="Comma-separated seed words (default: built-in list)")
-    parser.add_argument("--out", type=str, default="candidates-raw.txt",
-                        help="Output file (default: candidates-raw.txt)")
+    parser.add_argument("--seeds", type=str, default=None, help="Comma-separated seed words (default: built-in list)")
+    parser.add_argument(
+        "--out", type=str, default="candidates-raw.txt", help="Output file (default: candidates-raw.txt)"
+    )
     parser.add_argument("--min-len", type=int, default=4, help="Minimum name length")
     parser.add_argument("--max-len", type=int, default=12, help="Maximum name length")
     args = parser.parse_args()

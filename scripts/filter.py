@@ -14,8 +14,8 @@ import argparse
 import json
 import sys
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 
 
 def check_registry(name: str, url_template: str) -> bool:
@@ -86,8 +86,12 @@ def main():
     parser.add_argument("--out", type=str, default="candidates-filtered.txt")
     parser.add_argument("--delay", type=float, default=0.3, help="Delay between API calls (seconds)")
     parser.add_argument("--limit", type=int, default=None, help="Max candidates to check (for testing)")
-    parser.add_argument("--pre-filter", type=str, default=None,
-                        help="Comma-separated keywords: only check candidates containing one of these substrings")
+    parser.add_argument(
+        "--pre-filter",
+        type=str,
+        default=None,
+        help="Comma-separated keywords: only check candidates containing one of these substrings",
+    )
     args = parser.parse_args()
 
     with open(args.input) as f:
@@ -98,7 +102,7 @@ def main():
         candidates = [c for c in candidates if any(k in c for k in keywords)]
 
     if args.limit:
-        candidates = candidates[:args.limit]
+        candidates = candidates[: args.limit]
 
     print(f"Checking {len(candidates)} candidates...", file=sys.stderr)
 
@@ -109,7 +113,7 @@ def main():
         results.append(result)
         status = result["verdict"]
         gh = result["github"] if result["github"] is not None else "?"
-        print(f"  [{i+1}/{len(candidates)}] {name}: {status} (gh:{gh})", file=sys.stderr)
+        print(f"  [{i + 1}/{len(candidates)}] {name}: {status} (gh:{gh})", file=sys.stderr)
         if status in ("CLEAN", "LIKELY_OK"):
             clean.append(result)
 
