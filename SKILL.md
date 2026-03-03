@@ -15,19 +15,19 @@ Structured naming pipeline. Works for any product, company, or brand — not jus
 
 Ask these in order — domain first, then the four Diamond Framework questions:
 
-**0. What's the domain?** — "What industry or category is this?" (e.g. coffee shop, developer tool, law firm, band)
+**1. What's the domain?** — "What industry or category is this?" (e.g. coffee shop, developer tool, law firm, band)
 > *Sets context for the other 4 questions. Gets prepended to availability searches later.*
 
-**1. What does winning look like?** — The vision. What is this, who's it for, what does success look like?
+**2. What does winning look like?** — The vision. What is this, who's it for, what does success look like?
 > *Swiffer: "Build a mop-like device people pay a premium for. Make cleaning floors something people want to do."*
 
-**2. What do we have to win?** — The advantage. What assets or insights give you an edge?
+**3. What do we have to win?** — The advantage. What assets or insights give you an edge?
 > *Swiffer: "P&G's Pampers diaper tech — a lighter, more effective tool using absorbent pads instead of water."*
 
-**3. What do we need to win?** — The gaps. What's missing? What must be overcome?
+**4. What do we need to win?** — The gaps. What's missing? What must be overcome?
 > *Swiffer: "Avoid being seen as just another mop. People hate mopping — they need to see this as entirely new."*
 
-**4. What do we need to say?** — The message. What should the name communicate? What should it *feel* like?
+**5. What do we need to say?** — The message. What should the name communicate? What should it *feel* like?
 > *Swiffer: "Logical: efficient, quick, easy. Emotional: fun, joyful, light. Should sound like a quick, satisfying action."*
 
 See `references/diamond-framework.md` for the full framework with examples and sound symbolism.
