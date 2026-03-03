@@ -127,11 +127,19 @@ def generate_compounds(base_words: list[str]) -> set[str]:
     return compounds
 
 
-def generate_morpheme_blends(seeds: list[str]) -> set[str]:
-    """Generate blended/portmanteau candidates from seed morphemes."""
+def generate_morpheme_blends(
+    seeds: list[str],
+    blend_prefixes: list[str] | None = None,
+    blend_suffixes: list[str] | None = None,
+) -> set[str]:
+    """Generate blended/portmanteau candidates from morpheme parts.
+
+    If blend_prefixes/blend_suffixes are provided (LLM-generated), uses those.
+    Otherwise falls back to extracting word[:4]/word[-4:] from seeds.
+    """
     blends = set()
-    roots = [s[:4] for s in seeds if len(s) >= 4]
-    tails = [s[-4:] for s in seeds if len(s) >= 4]
+    roots = blend_prefixes if blend_prefixes else [s[:4] for s in seeds if len(s) >= 4]
+    tails = blend_suffixes if blend_suffixes else [s[-4:] for s in seeds if len(s) >= 4]
 
     for root in roots:
         for tail in tails:
@@ -176,6 +184,10 @@ def main():
     parser.add_argument("--out-dir", type=str, default=None, help="Output directory (default: ./namer-output/)")
     parser.add_argument("--min-len", type=int, default=4, help="Minimum name length")
     parser.add_argument("--max-len", type=int, default=12, help="Maximum name length")
+    parser.add_argument("--blend-prefixes", type=str, default=None,
+                        help="Comma-separated blend prefixes (LLM-generated, replaces word[:4] extraction)")
+    parser.add_argument("--blend-suffixes", type=str, default=None,
+                        help="Comma-separated blend suffixes (LLM-generated, replaces word[-4:] extraction)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show per-seed progress (default: summary only)")
     args = parser.parse_args()
 
@@ -213,7 +225,13 @@ def main():
 
     # Phase 3: Morpheme blends
     print("Phase 3/3: Morpheme blends...", file=sys.stderr)
-    blends = generate_morpheme_blends(seeds + list(semantic)[:50])
+    blend_prefixes = args.blend_prefixes.split(",") if args.blend_prefixes else None
+    blend_suffixes = args.blend_suffixes.split(",") if args.blend_suffixes else None
+    blends = generate_morpheme_blends(
+        seeds + list(semantic)[:50],
+        blend_prefixes=blend_prefixes,
+        blend_suffixes=blend_suffixes,
+    )
     print(f"  ✅ {len(blends)} blend candidates", file=sys.stderr)
 
     # Combine and filter
