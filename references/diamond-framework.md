@@ -5,27 +5,31 @@
 Before generating names, work through these five questions with the user. These define the space the name must occupy.
 
 ```
-       VISION
-       (top)
-      /      \
-  MESSAGE    ADVANTAGE
-  (left)     (right)
-      \      /
-      GAPS
-     (bottom)
-       +
-     DOMAIN
+     What does winning
+       look like?
+         (top)
+        /      \
+  What do       What do
+  we need       we have
+  to say?       to win?
+  (left)        (right)
+        \      /
+      What do we
+      need to win?
+       (bottom)
+         +
+      Domain?
 ```
 
-1. **Vision** — What is this thing? What does it do, who's it for, and what does success look like?
-2. **Advantage** — What makes it different from the competition? What's the moat?
-3. **Gaps** — What's missing right now? Early stage, no users, credibility, resources, etc.
-4. **Message** — What should the name *feel* like? Serious/scientific? Playful/accessible? Futuristic? Something else?
-5. **Domain** — What industry or category is this? Examples: "coffee shop", "npm package", "AI tool", "law firm", "band name", "SaaS platform"
+1. **What does winning look like?** — Describe the product, who it's for, and what success looks like.
+2. **What do we have to win?** — What's the advantage? What makes this different from the competition?
+3. **What do we need to win?** — What's missing? What gaps need to be filled? (stage, users, trust, resources)
+4. **What do we need to say?** — What should the name communicate? What should it *feel* like?
+5. **What's the domain?** — What industry or category? (e.g. "coffee shop", "npm package", "AI tool", "law firm")
 
 The domain answer is critical for availability checking. A name might be clear for a coffee shop but taken for a SaaS tool. The agent appends the domain to web searches: `"[name] [domain]"`.
 
-Make questions concrete and conversational — adapt to the product context. Avoid abstract strategy language.
+Keep questions concrete and conversational — adapt to the product context.
 
 ## Key Principles
 

@@ -15,11 +15,11 @@ Structured naming pipeline. Works for any product, company, or brand — not jus
 
 Ask these in plain language, adapted to the user's product:
 
-1. **Vision** — What is this thing? What does it do, who's it for, and what does success look like?
-2. **Advantage** — What makes it different from the competition? What's the moat?
-3. **Gaps** — What's missing right now? (early stage, no users, credibility, resources, etc.)
-4. **Message** — What should the name *feel* like? (serious/scientific? playful/accessible? futuristic? warm? edgy?)
-5. **Domain** — What industry or category is this? (e.g. "coffee shop", "npm package", "AI tool", "law firm", "band name")
+1. **What does winning look like?** — Describe the product, who it's for, and what success looks like.
+2. **What do we have to win?** — What's the advantage? What makes this different from the competition?
+3. **What do we need to win?** — What's missing? What gaps need to be filled? (stage, users, trust, resources)
+4. **What do we need to say?** — What should the name communicate? What should it *feel* like?
+5. **What's the domain?** — What industry or category? (e.g. "coffee shop", "npm package", "AI tool", "law firm")
 
 The domain answer is critical — it determines what you search for in the availability check. A name that's clean for a coffee shop might be taken for a SaaS tool.
 
