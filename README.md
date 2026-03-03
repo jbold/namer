@@ -2,16 +2,14 @@
 
 An AI agent skill for structured product/brand naming — for anything, not just software. Coffee shops, SaaS tools, bands, law firms, whatever needs a name.
 
-Generates 1000+ candidates using free APIs (zero LLM tokens), mechanically shortlists by quality, then the LLM picks the best and checks them against real-world conflicts.
+Generates 1000+ candidates using free APIs, mechanically shortlists by quality, then the LLM picks the best and checks them against real-world conflicts.
 
 **Token-efficient by design** — the LLM only sees ~100 pre-filtered survivors.
 
 ## How it works
 
-Uses David Placek's Diamond Framework (Lexicon Branding — Swiffer, Sonos, Azure, Vercel, Pentium).
-
 1. **Domain** — What industry/category? (sets context for everything)
-2. **Diamond questions** — What does winning look like? What do we have to win? What do we need to win? What do we need to say?
+2. **Seed Generation Questions** — What does winning look like? What do we have to win? What do we need to win? What do we need to say?
 3. **Extract seeds** — LLM pulls 15-25 seed words from the answers
 4. **Generate** — Datamuse API blasts seeds into ~1,000–10,000 candidates (zero tokens)
 5. **Shortlist** — Mechanical scoring (pronounceability, spellability, length, letter patterns) cuts to ~100
@@ -22,7 +20,7 @@ Uses David Placek's Diamond Framework (Lexicon Branding — Swiffer, Sonos, Azur
 ## Requirements
 
 - **Python 3.8+** (stdlib only — no pip installs needed)
-- **Any web search** (agent's built-in search, or API key for the standalone script)
+- **Any web search** (agent's built-in search, or API key for the standalone script, DEFAULT looks for Brave API Key)
 
 ## Install
 
@@ -92,7 +90,7 @@ The web search gate auto-discovers your setup:
 2. **MCP configs** — scans for search tools (brave-search, tavily, serper, exa, etc.)
 3. **Environment variables** — direct API keys
 4. **CLI tools** — ddgr, googler
-5. **Guided setup** — recommends Brave Search (free, 30 sec signup)
+5. **Guided setup** — default Brave Search (free, 30 sec signup)
 
 | Provider | Env vars | Cost |
 |----------|----------|------|
