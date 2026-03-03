@@ -4,14 +4,16 @@ import os
 import sys
 from unittest.mock import patch
 
+# Add scripts dir so both websearch_gate and search package are importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
-from websearch_gate import check_product_presence, discover_provider
+from search.providers import discover_provider
+from search.signals import check_product_presence
 
 
 class TestProductSignalDetection:
     """Test product presence detection with mocked search results."""
 
-    @patch("websearch_gate.do_search")
+    @patch("search.signals.do_search")
     def test_clear_no_product_signals(self, mock_search):
         """No product signals in results = CLEAR."""
         mock_search.return_value = [
@@ -30,7 +32,7 @@ class TestProductSignalDetection:
         assert result["verdict"] == "CLEAR"
         assert result["has_product"] is False
 
-    @patch("websearch_gate.do_search")
+    @patch("search.signals.do_search")
     def test_bumped_strong_product_signals(self, mock_search):
         """Multiple product signals = BUMPED."""
         mock_search.return_value = [
@@ -50,7 +52,7 @@ class TestProductSignalDetection:
         assert result["has_product"] is True
         assert len(set(result["signals"])) >= 2
 
-    @patch("websearch_gate.do_search")
+    @patch("search.signals.do_search")
     def test_caution_weak_signal(self, mock_search):
         """Single product signal = CAUTION."""
         mock_search.return_value = [
@@ -69,14 +71,14 @@ class TestProductSignalDetection:
         # "platform" is one signal
         assert result["verdict"] in ("CAUTION", "BUMPED")
 
-    @patch("websearch_gate.do_search")
+    @patch("search.signals.do_search")
     def test_empty_results(self, mock_search):
         """No search results = CLEAR."""
         mock_search.return_value = []
         result = check_product_presence("brave", {"BRAVE_API_KEY": "test"}, "zzzznotreal")
         assert result["verdict"] == "CLEAR"
 
-    @patch("websearch_gate.do_search")
+    @patch("search.signals.do_search")
     def test_top_results_truncated(self, mock_search):
         """Top results are truncated to 80 chars."""
         mock_search.return_value = [

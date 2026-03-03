@@ -18,43 +18,19 @@ Usage:
 import argparse
 import json
 import os
-import signal
 import sys
 import time
 import urllib.error
 import urllib.request
 
-# --- Interrupt handling ---
-
-_interrupted = False
-
-
-def _handle_interrupt(signum, frame):
-    global _interrupted
-    _interrupted = True
-    print("\n⚠️  Interrupted! Writing partial results...", file=sys.stderr)
-
-
-signal.signal(signal.SIGINT, _handle_interrupt)
-signal.signal(signal.SIGTERM, _handle_interrupt)
-
-
-# --- Time formatting ---
-
-
-def format_eta(seconds: float) -> str:
-    if seconds < 60:
-        return f"{int(seconds)}s"
-    elif seconds < 3600:
-        return f"{int(seconds // 60)}m {int(seconds % 60)}s"
-    else:
-        return f"{int(seconds // 3600)}h {int(seconds % 3600 // 60)}m"
-
+from fileio import apply_pre_filter, load_candidates, resolve_input, resolve_output
+from output import print_output_summary, resolve_output_path
+from progress import InterruptHandler, ProgressTracker, format_eta
 
 # --- Registry checks ---
 
 
-def check_registry(name: str, url_template: str) -> bool:
+def check_registry(name: str, url_template: str) -> bool | None:
     """Check if a name exists on a package registry. Returns True if TAKEN."""
     url = url_template.format(name=name)
     try:
@@ -85,7 +61,7 @@ def check_github_count(name: str) -> int | None:
 
 
 def check_candidate(name: str, delay: float) -> dict:
-    """Run all checks on a candidate name."""
+    """Run all registry checks on a candidate name."""
     result = {"name": name}
 
     result["npm"] = check_registry(name, "https://registry.npmjs.org/{name}")
@@ -152,46 +128,23 @@ def main():
     parser.add_argument("--limit", type=int, default=None, help="Max candidates to check (for testing)")
     parser.add_argument("--resume", action="store_true", help="Resume from last checkpoint")
     parser.add_argument(
-        "--pre-filter",
-        type=str,
-        default=None,
+        "--pre-filter", type=str, default=None,
         help="Comma-separated substrings: only check candidates containing one of these",
     )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Show per-item progress (default: summary only)")
     args = parser.parse_args()
 
-    from output import print_output_summary, resolve_output_path
-
     # Resolve paths
-    if os.sep not in args.out and not os.path.dirname(args.out):
-        args.out = resolve_output_path(args.out, args.out_dir)
-
-    if not os.path.exists(args.input) and os.sep not in args.input:
-        alt = resolve_output_path(args.input, args.out_dir)
-        if os.path.exists(alt):
-            args.input = alt
-
+    args.out = resolve_output(args.out, args.out_dir)
+    args.input = resolve_input(args.input, args.out_dir)
     tsv_out = resolve_output_path(os.path.basename(args.out).replace(".txt", "-full.tsv"), args.out_dir)
 
-    # Load candidates
-    if not os.path.exists(args.input):
-        print(f"❌ Input file not found: {args.input}", file=sys.stderr)
-        print("", file=sys.stderr)
-        print("Expected: candidates-raw.txt from the generate step.", file=sys.stderr)
-        print("Run: python3 scripts/generate.py --seeds 'your,seed,words'", file=sys.stderr)
-        sys.exit(1)
-
-    with open(args.input) as f:
-        candidates = [line.strip() for line in f if line.strip()]
-
-    if not candidates:
-        print("❌ Input file is empty. No candidates to filter.", file=sys.stderr)
-        sys.exit(1)
-
-    if args.pre_filter:
-        keywords = [k.strip() for k in args.pre_filter.split(",")]
-        before = len(candidates)
-        candidates = [c for c in candidates if any(k in c for k in keywords)]
-        print(f"Pre-filter: {before} → {len(candidates)} candidates (keywords: {', '.join(keywords)})", file=sys.stderr)
+    # Load and filter candidates
+    candidates = load_candidates(
+        args.input, step_name="generate",
+        run_hint="python3 scripts/generate.py --seeds 'your,seed,words'",
+    )
+    candidates = apply_pre_filter(candidates, args.pre_filter)
 
     if args.limit:
         candidates = candidates[: args.limit]
@@ -201,17 +154,18 @@ def main():
     if args.resume and os.path.exists(tsv_out):
         already_checked = load_checkpoint(tsv_out)
         print(
-            f"📋 Resuming: {len(already_checked)} already checked, {len(candidates) - len(already_checked)} remaining",
+            f"📋 Resuming: {len(already_checked)} already checked, "
+            f"{len(candidates) - len(already_checked)} remaining",
             file=sys.stderr,
         )
     elif os.path.exists(tsv_out) and not args.resume:
-        # Starting fresh — clear old TSV
         os.remove(tsv_out)
 
     # Estimate time
-    remaining = [c for c in candidates if c not in already_checked]
-    total_remaining = len(remaining)
+    remaining_names = [c for c in candidates if c not in already_checked]
+    total_remaining = len(remaining_names)
     est_seconds = total_remaining * args.delay * 4  # 4 API calls per candidate
+
     print("", file=sys.stderr)
     print(f"🔍 Checking {len(candidates)} candidates ({total_remaining} remaining)", file=sys.stderr)
     print(f"⏱️  Estimated time: {format_eta(est_seconds)}", file=sys.stderr)
@@ -221,67 +175,47 @@ def main():
 
     # Write TSV header if new file
     if not os.path.exists(tsv_out):
-        append_result_tsv(tsv_out, {}, write_header=True)
-        # Remove the empty result line we'd write — just write header
         with open(tsv_out, "w") as f:
             f.write("name\tnpm\tpypi\tcrates\tgithub\tverdict\n")
 
-    # Process
+    # Process with shared progress tracker
+    interrupt = InterruptHandler()
+    tracker = ProgressTracker(
+        total=len(candidates), already_done=len(already_checked),
+        max_errors=10, interrupt=interrupt, verbose=args.verbose,
+    )
+
     clean = []
     results = []
-    checked_count = len(already_checked)
-    start_time = time.time()
-    errors = 0
 
-    for _i, name in enumerate(candidates):
-        if _interrupted:
+    for name in candidates:
+        if tracker.should_stop():
             break
-
         if name in already_checked:
             continue
 
         try:
             result = check_candidate(name, args.delay)
         except Exception as e:
-            errors += 1
-            print(f"  ⚠️  [{checked_count + 1}/{len(candidates)}] {name}: ERROR ({e})", file=sys.stderr)
-            if errors >= 10:
-                print("", file=sys.stderr)
-                print(f"❌ Too many errors ({errors}). Stopping.", file=sys.stderr)
-                print("   This usually means an API is rate-limiting or unreachable.", file=sys.stderr)
-                print("   Try again later or increase --delay.", file=sys.stderr)
+            if not tracker.record_error(f"{name}: ERROR ({e})"):
                 break
             continue
 
         results.append(result)
-        checked_count += 1
+        append_result_tsv(tsv_out, result)  # incremental write
 
-        # Incremental write to TSV (survives crashes)
-        append_result_tsv(tsv_out, result)
-
-        status = result["verdict"]
-        gh = result["github"] if result["github"] is not None else "?"
-
-        if status in ("CLEAN", "LIKELY_OK"):
+        if result["verdict"] in ("CLEAN", "LIKELY_OK"):
             clean.append(result)
 
-        # Progress with ETA
-        elapsed = time.time() - start_time
-        rate = (checked_count - len(already_checked)) / max(elapsed, 0.1)
-        remaining_count = total_remaining - (checked_count - len(already_checked))
-        eta = remaining_count / max(rate, 0.001)
-
-        print(
-            f"  [{checked_count}/{len(candidates)}] {name}: {status} (gh:{gh}) | ETA: {format_eta(eta)}",
-            file=sys.stderr,
-        )
+        gh = result["github"] if result["github"] is not None else "?"
+        tracker.tick(f"{name}: {result['verdict']} (gh:{gh})")
 
     # Write clean candidates
     with open(args.out, "w") as f:
         for r in clean:
             f.write(f"{r['name']}\n")
 
-    # Also include any clean results from checkpoint
+    # Include clean results from checkpoint
     if already_checked and os.path.exists(tsv_out):
         with open(tsv_out) as f:
             f.readline()  # skip header
@@ -296,34 +230,31 @@ def main():
                         out.write(f"{parts[0]}\n")
 
     # Summary
+    tracker.finish_line()
     taken = sum(1 for r in results if r["verdict"] == "TAKEN")
     check = sum(1 for r in results if r["verdict"] == "CHECK")
 
-    print("", file=sys.stderr)
-
-    if _interrupted:
-        print(f"⚠️  Interrupted after {checked_count}/{len(candidates)} candidates.", file=sys.stderr)
+    if tracker.was_interrupted:
+        print(f"⚠️  Interrupted after {tracker.done}/{len(candidates)} candidates.", file=sys.stderr)
         print("   Partial results saved. Run with --resume to continue.", file=sys.stderr)
-    elif errors >= 10:
-        print(f"⚠️  Stopped after {errors} errors. Partial results saved.", file=sys.stderr)
+    elif tracker.hit_error_limit:
+        print(f"⚠️  Stopped after {tracker.errors} errors. Partial results saved.", file=sys.stderr)
         print("   Run with --resume to continue later.", file=sys.stderr)
     else:
-        print(f"✅ Done! Checked {checked_count} candidates.", file=sys.stderr)
+        print(f"✅ Done! Checked {tracker.done} candidates.", file=sys.stderr)
 
     print(f"   {len(clean)} clean, {check} needs-check, {taken} taken", file=sys.stderr)
 
-    if errors > 0 and errors < 10:
-        print(f"   {errors} errors (skipped)", file=sys.stderr)
+    if tracker.errors > 0 and not tracker.hit_error_limit:
+        print(f"   {tracker.errors} errors (skipped)", file=sys.stderr)
 
     print("", file=sys.stderr)
-    print_output_summary(
-        [
-            (f"{len(clean)} clean candidates", args.out),
-            ("Full results (TSV)", tsv_out),
-        ]
-    )
+    print_output_summary([
+        (f"{len(clean)} clean candidates", args.out),
+        ("Full results (TSV)", tsv_out),
+    ])
 
-    if _interrupted:
+    if tracker.was_interrupted:
         print("▶️  Resume: python3 scripts/filter.py --resume", file=sys.stderr)
 
 

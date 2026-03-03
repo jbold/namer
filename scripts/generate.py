@@ -18,70 +18,36 @@ from itertools import product as iterproduct
 
 DATAMUSE_BASE = "https://api.datamuse.com/words"
 DEFAULT_SEEDS = [
-    "memory",
-    "recall",
-    "remember",
-    "trace",
-    "echo",
-    "mind",
-    "know",
-    "think",
-    "weave",
-    "thread",
-    "pattern",
-    "connect",
-    "surface",
-    "emerge",
-    "find",
-    "seek",
-    "vault",
-    "keep",
-    "spark",
-    "light",
-    "vision",
-    "dream",
-    "ghost",
-    "soul",
-    "flow",
-    "stream",
-    "wave",
-    "pulse",
-    "glow",
-    "drift",
+    "memory", "recall", "remember", "trace", "echo", "mind", "know", "think",
+    "weave", "thread", "pattern", "connect", "surface", "emerge", "find", "seek",
+    "vault", "keep", "spark", "light", "vision", "dream", "ghost", "soul",
+    "flow", "stream", "wave", "pulse", "glow", "drift",
 ]
 
-# Prefixes and suffixes for compound generation
 PREFIXES = ["re", "un", "neo", "pre", "ever", "deep", "true", "all", "pan", "omni", "syn", "meta"]
 SUFFIXES = [
-    "mind",
-    "trace",
-    "flow",
-    "spark",
-    "vault",
-    "keep",
-    "weave",
-    "forge",
-    "well",
-    "root",
-    "seed",
-    "bloom",
-    "wake",
-    "drift",
-    "mark",
-    "cast",
-    "bind",
-    "loom",
+    "mind", "trace", "flow", "spark", "vault", "keep", "weave", "forge",
+    "well", "root", "seed", "bloom", "wake", "drift", "mark", "cast", "bind", "loom",
 ]
 
+# Frequency thresholds for Datamuse results (per million in English text)
+FREQ_SUPPRESS = 5.0  # Too common to own as a brand
+FREQ_WARN = 1.0  # Borderline
 
-# Frequency threshold: words appearing more than this many times per million
-# in English text are "common" and make poor brand names (unownable, SEO nightmare).
-# < 1.0 = rare/invented (great), 1-5 = uncommon (ok), > 5.0 = common (suppress)
-FREQ_SUPPRESS = 5.0  # Hard suppress: too common to own
-FREQ_WARN = 1.0  # Flag but keep: borderline
+# Common words to exclude from output (too generic for brand names)
+COMMON_EXCLUSIONS = {
+    "memory", "remember", "recall", "think", "mind", "know", "brain", "head",
+    "thought", "idea", "dream", "find", "search", "look", "see", "feel",
+    "sense", "learn", "the", "and", "for", "that", "this", "with", "from",
+    "have", "has", "had", "was", "were", "been", "being", "will", "would",
+    "could", "should", "might", "shall",
+}
 
-# Track frequency data for all words we see
+# Track frequency data for suppression reporting
 _word_frequencies: dict[str, float] = {}
+
+
+# --- Datamuse API ---
 
 
 def _parse_frequency(tags: list[str]) -> float | None:
@@ -96,7 +62,7 @@ def _parse_frequency(tags: list[str]) -> float | None:
 
 
 def datamuse_query(params: dict, max_results: int = 50) -> list[str]:
-    """Query Datamuse API, return list of words. Filters common words by frequency."""
+    """Query Datamuse API. Filters common words by frequency."""
     params["max"] = str(max_results)
     params["md"] = "f"  # Request frequency metadata
     url = f"{DATAMUSE_BASE}?{urllib.parse.urlencode(params)}"
@@ -110,7 +76,7 @@ def datamuse_query(params: dict, max_results: int = 50) -> list[str]:
                 if freq is not None:
                     _word_frequencies[word] = freq
                     if freq > FREQ_SUPPRESS:
-                        continue  # Too common — skip
+                        continue
                 results.append(word)
             return results
     except Exception as e:
@@ -118,27 +84,32 @@ def datamuse_query(params: dict, max_results: int = 50) -> list[str]:
         return []
 
 
-def generate_semantic(seeds: list[str]) -> set[str]:
-    """Generate candidates from semantic associations."""
+# --- Generation strategies ---
+
+
+def generate_semantic(seeds: list[str], verbose: bool = False) -> set[str]:
+    """Generate candidates from semantic associations via Datamuse."""
     candidates = set()
-    for seed in seeds:
-        print(f"  Semantic: {seed}", file=sys.stderr)
-        # Means like
+    for i, seed in enumerate(seeds):
+        if verbose:
+            print(f"  Semantic: {seed}", file=sys.stderr)
+        else:
+            pct = int((i + 1) / len(seeds) * 100)
+            print(f"\r  Querying Datamuse: {i + 1}/{len(seeds)} seeds ({pct}%)   ", end="", file=sys.stderr)
         candidates.update(datamuse_query({"ml": seed}))
         time.sleep(0.15)
-        # Triggered by
         candidates.update(datamuse_query({"rel_trg": seed}))
         time.sleep(0.15)
-        # Sounds like
         candidates.update(datamuse_query({"sl": seed}, max_results=20))
         time.sleep(0.15)
+    if not verbose:
+        print("", file=sys.stderr)  # clear \r line
     return candidates
 
 
 def generate_compounds(base_words: list[str]) -> set[str]:
     """Generate compound names (prefix+base, base+suffix, base+base)."""
     compounds = set()
-    # Short, punchy base words only
     short_bases = [w for w in base_words if 3 <= len(w) <= 7 and w.isalpha()][:60]
 
     for prefix in PREFIXES:
@@ -149,7 +120,6 @@ def generate_compounds(base_words: list[str]) -> set[str]:
         for suffix in SUFFIXES:
             compounds.add(base + suffix)
 
-    # Base + base combos (most interesting)
     for a, b in iterproduct(short_bases[:30], short_bases[:30]):
         if a != b and len(a) + len(b) <= 12:
             compounds.add(a + b)
@@ -160,8 +130,8 @@ def generate_compounds(base_words: list[str]) -> set[str]:
 def generate_morpheme_blends(seeds: list[str]) -> set[str]:
     """Generate blended/portmanteau candidates from seed morphemes."""
     blends = set()
-    roots = [s[:4] for s in seeds if len(s) >= 4]  # First 4 chars
-    tails = [s[-4:] for s in seeds if len(s) >= 4]  # Last 4 chars
+    roots = [s[:4] for s in seeds if len(s) >= 4]
+    tails = [s[-4:] for s in seeds if len(s) >= 4]
 
     for root in roots:
         for tail in tails:
@@ -173,49 +143,11 @@ def generate_morpheme_blends(seeds: list[str]) -> set[str]:
     return blends
 
 
+# --- Filtering ---
+
+
 def filter_basic(candidates: set[str], min_len: int, max_len: int) -> list[str]:
     """Basic filtering: length, alpha-only, no common English words."""
-    # Common words to exclude (too generic)
-    common = {
-        "memory",
-        "remember",
-        "recall",
-        "think",
-        "mind",
-        "know",
-        "brain",
-        "head",
-        "thought",
-        "idea",
-        "dream",
-        "find",
-        "search",
-        "look",
-        "see",
-        "feel",
-        "sense",
-        "learn",
-        "the",
-        "and",
-        "for",
-        "that",
-        "this",
-        "with",
-        "from",
-        "have",
-        "has",
-        "had",
-        "was",
-        "were",
-        "been",
-        "being",
-        "will",
-        "would",
-        "could",
-        "should",
-        "might",
-        "shall",
-    }
     filtered = []
     seen = set()
     for c in candidates:
@@ -224,7 +156,7 @@ def filter_basic(candidates: set[str], min_len: int, max_len: int) -> list[str]:
             continue
         if len(c) < min_len or len(c) > max_len:
             continue
-        if c in common:
+        if c in COMMON_EXCLUSIONS:
             continue
         if c in seen:
             continue
@@ -234,22 +166,26 @@ def filter_basic(candidates: set[str], min_len: int, max_len: int) -> list[str]:
     return sorted(filtered)
 
 
+# --- CLI ---
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate naming candidates via Datamuse API")
-    parser.add_argument("--seeds", type=str, default=None, help="Comma-separated seed words (default: built-in list)")
-    parser.add_argument("--out", type=str, default="candidates-raw.txt", help="Output filename (placed in output dir)")
+    parser.add_argument("--seeds", type=str, default=None, help="Comma-separated seed words")
+    parser.add_argument("--out", type=str, default="candidates-raw.txt", help="Output filename")
     parser.add_argument("--out-dir", type=str, default=None, help="Output directory (default: ./namer-output/)")
     parser.add_argument("--min-len", type=int, default=4, help="Minimum name length")
     parser.add_argument("--max-len", type=int, default=12, help="Maximum name length")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Show per-seed progress (default: summary only)")
     args = parser.parse_args()
 
     from output import get_output_dir, print_output_summary, resolve_output_path
 
-    # If --out is a bare filename, put it in the output dir. If it's a path, use as-is.
+    # Resolve output path
     if os.sep not in args.out and not os.path.dirname(args.out):
         args.out = resolve_output_path(args.out, args.out_dir)
     else:
-        get_output_dir(args.out_dir)  # still create output dir for consistency
+        get_output_dir(args.out_dir)
 
     seeds = args.seeds.split(",") if args.seeds else DEFAULT_SEEDS
 
@@ -262,7 +198,7 @@ def main():
     # Phase 1: Semantic expansion
     print("Phase 1/3: Semantic expansion via Datamuse API...", file=sys.stderr)
     try:
-        semantic = generate_semantic(seeds)
+        semantic = generate_semantic(seeds, verbose=args.verbose)
         print(f"  ✅ {len(semantic)} semantic candidates", file=sys.stderr)
     except Exception as e:
         print(f"  ❌ Datamuse API error: {e}", file=sys.stderr)
@@ -280,7 +216,7 @@ def main():
     blends = generate_morpheme_blends(seeds + list(semantic)[:50])
     print(f"  ✅ {len(blends)} blend candidates", file=sys.stderr)
 
-    # Combine and filter (don't add raw seeds — they're common words used as input, not output)
+    # Combine and filter
     all_candidates = semantic | compounds | blends
     filtered = filter_basic(all_candidates, args.min_len, args.max_len)
 
@@ -289,24 +225,18 @@ def main():
         for c in filtered:
             f.write(c + "\n")
 
-    # Count how many common words were suppressed
     suppressed = sum(1 for f in _word_frequencies.values() if f > FREQ_SUPPRESS)
 
     print("", file=sys.stderr)
     print(
-        f"✅ Done! {len(all_candidates)} raw → {len(filtered)} after filtering ({args.min_len}-{args.max_len} chars, alpha only)",
+        f"✅ Done! {len(all_candidates)} raw → {len(filtered)} after filtering "
+        f"({args.min_len}-{args.max_len} chars, alpha only)",
         file=sys.stderr,
     )
     if suppressed:
         print(f"   🚫 {suppressed} common words suppressed (frequency > {FREQ_SUPPRESS}/million)", file=sys.stderr)
 
-    print_output_summary(
-        [
-            (f"{len(filtered)} candidates", args.out),
-        ]
-    )
-
-    # Next step guidance
+    print_output_summary([(f"{len(filtered)} candidates", args.out)])
     print("▶️  Next: python3 scripts/filter.py", file=sys.stderr)
     if len(filtered) > 500:
         print(
