@@ -76,7 +76,7 @@ After all 5 questions, extract **15-25 seed words** total:
 - ~2-3 from "need to win" (the gaps/aspirations)
 - ~3-5 from "need to say" (the feeling/tone)
 
-These seeds feed directly into `generate.py --seeds "word1,word2,..."`. The quality of your seeds determines the quality of your candidates.
+The quality of your seeds determines the quality of your candidates. These seeds drive the generation step — they're the raw material from which all name candidates emerge.
 
 ## Sound Symbolism
 
