@@ -34,29 +34,47 @@ See `references/diamond-framework.md` for the full framework with examples and s
 
 ### Step 1b: Extract Seeds
 
-From the user's answers, extract **15-25 seed words**:
+From the user's answers, extract **30-50 seed words** across these categories:
+
+**Literal seeds (~15-25):**
 - ~3-5 from domain (the industry's vocabulary)
 - ~3-5 from "winning" (vision/ambition words)
 - ~3-5 from "have to win" (differentiator words)
 - ~2-3 from "need to win" (aspiration/gap words)
 - ~3-5 from "need to say" (feeling/tone words)
 
-Example for Swiffer: `clean,sweep,wipe,swift,quick,light,easy,fun,snap,fresh,new,pad,glide,breeze,play,joy,smooth,action`
+**Evocative seeds (~15-25) — YOU generate these based on the domain:**
+- ~3-5 **metaphorical** — words from adjacent domains that FEEL like the brand but aren't literal. Draw from nature, mythology, architecture, music, materials, art movements. Ask: "If this product were a natural phenomenon / material / type of motion, what would it be?"
+- ~3-5 **cross-cultural roots** — foreign language roots (Latin, Greek, Sanskrit, Japanese, Arabic, etc.) that carry the right connotation. Ask: "What words from other languages capture the essence?"
+- ~2-3 **sound-designed** — invented syllable combos chosen for phonetic personality. Front vowels (i,e) = light/fast/precise. Back vowels (o,u) = solid/strong/warm. Plosives (b,d,k,t) = decisive. Fricatives (s,f,v) = smooth/flowing. Nasals (m,n) = warm/resonant.
+
+**Blend parts (~20-30) — for morpheme blend generation:**
+- ~10-15 **blend prefixes** (2-4 chars) — syllable fragments that sound right for the brand's tone. These replace mechanical `word[:4]` extraction. E.g. for a calm wellness brand: `sol, lun, ven, mer, syl, vel, ari, zen, cel, kai`
+- ~10-15 **blend suffixes** (2-4 chars) — ending fragments that feel like natural word endings. E.g.: `ora, ine, ova, ium, ent, aro, elo, ith, ura, ane`
+
+Example for Swiffer:
+- Literal: `clean,sweep,wipe,swift,quick,light,easy,fun,snap,fresh,new,pad,glide,breeze,play,joy,smooth,action`
+- Metaphorical: `zephyr,dart,flick,ripple,cascade`
+- Cross-cultural: `vento,levis,rapido,souffle,karui`
+- Sound-designed: `swif,fliro,breva`
+- Blend prefixes: `swi,gli,bre,fli,sna,whi,qui,dri,cri,zep`
+- Blend suffixes: `ift,ide,eeze,isk,irl,elo,ane,ist,ova,ina`
 
 ### Step 2: Generate (zero LLM tokens)
 
 Tell the user: *"Generating ~1,000 candidates from your seeds (recommended minimum). More candidates = more hidden gems in the shortlist. Want more? I can go up to 10,000."*
 
 ```bash
-python3 scripts/generate.py --seeds "clean,sweep,swift,quick,light,easy,fun,snap,fresh,glide,breeze,play,joy"
+python3 scripts/generate.py \
+  --seeds "clean,sweep,swift,quick,light,easy,fun,snap,fresh,glide,breeze,play,joy,zephyr,dart,flick,ripple,cascade,vento,levis,rapido,souffle,karui,swif,fliro,breva" \
+  --blend-prefixes "swi,gli,bre,fli,sna,whi,qui,dri,cri,zep" \
+  --blend-suffixes "ift,ide,eeze,isk,irl,elo,ane,ist,ova,ina"
 ```
 - Datamuse API: semantic neighbors, sound-alikes, triggered-by associations
 - Compound generation: prefix+base, base+suffix, base+base
-- Morpheme blends: portmanteau candidates
+- Morpheme blends: uses LLM-generated blend prefixes/suffixes (falls back to `word[:4]`/`word[-4:]` extraction if not provided)
 - `--limit N` caps output to top N candidates (by alphabetical; use shortlist for quality ranking)
 - Output: `namer-output/candidates-raw.txt`
-
-Tip: Add manual candidates (foreign words, metaphors, invented words) by appending to the raw file before shortlisting.
 
 ### Step 3: Shortlist (zero LLM tokens)
 
@@ -65,7 +83,7 @@ Mechanically filter 10K → ~100 candidates so the LLM never sees the full list.
 ```bash
 python3 scripts/shortlist.py
 ```
-- Scores by: pronounceability, ease of spelling (penalizes ambiguous phonemes like "ph"/"gh"/"ck"), length sweetspot (5-9 chars), letter variety, strong starts
+- Scores by: pronounceability, ease of spelling, length sweetspot (5-9 chars), letter variety, strong starts, sound symbolism (phonetic consistency + pharma suffix penalty), prefix diversity (penalizes >10 candidates sharing a 4-char prefix)
 - `--top N` controls how many survive (default: 100, per Lexicon's "shortlist to 50-100" guideline)
 - `--pre-filter "key,words"` to only keep candidates containing specific substrings
 - Output: `namer-output/candidates-shortlist.txt` (one per line, scored)

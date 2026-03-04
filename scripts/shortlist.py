@@ -157,18 +157,103 @@ def score_starts_strong(name: str) -> float:
         return 0.5
 
 
+# --- Sound symbolism categories ---
+
+PLOSIVES = set("bdgkptcq")  # c is usually /k/, q is /k/
+FRICATIVES = set("fhsvzjx")  # h=glottal, j=/dʒ/, x=/ks/
+NASALS = set("mn")
+LIQUIDS = set("lrw")  # w=approximant, grouped with liquids
+
+# Pharma-sounding suffixes to penalize
+PHARMA_SUFFIXES = (
+    "ucid", "enix", "ogan", "ixin", "azol", "idol", "ipam", "otal",
+    "ucin", "exin", "orin", "idan", "azin", "ifen", "opam", "udin",
+)
+
+
+def score_sound_symbolism(name: str) -> float:
+    """Score 0-1 based on phonetic personality consistency.
+    Rewards names that commit to a clear sound profile
+    (consistently warm OR consistently sharp, not a random mix).
+    Penalizes pharma-sounding patterns."""
+    if not name:
+        return 0.0
+
+    n = name.lower()
+
+    # Classify each consonant into its phonetic category
+    category_counts = {"plosive": 0, "fricative": 0, "nasal": 0, "liquid": 0}
+    consonant_total = 0
+
+    for c in n:
+        if c in PLOSIVES:
+            category_counts["plosive"] += 1
+            consonant_total += 1
+        elif c in FRICATIVES:
+            category_counts["fricative"] += 1
+            consonant_total += 1
+        elif c in NASALS:
+            category_counts["nasal"] += 1
+            consonant_total += 1
+        elif c in LIQUIDS:
+            category_counts["liquid"] += 1
+            consonant_total += 1
+
+    if consonant_total == 0:
+        # All vowels — no consonant personality to measure
+        return 0.5
+
+    # Score consistency: highest category ratio indicates clear personality
+    max_ratio = max(category_counts.values()) / consonant_total
+    # Scale: 0.25 (uniform across 4) → 1.0 (all one category)
+    consistency = (max_ratio - 0.25) / 0.75  # normalize to 0-1
+    consistency = max(0.0, min(1.0, consistency))
+
+    # Base score from consistency
+    score = 0.3 + 0.7 * consistency
+
+    # Pharma suffix penalty
+    for suffix in PHARMA_SUFFIXES:
+        if n.endswith(suffix):
+            score -= 0.3
+            break
+
+    return max(0.0, min(1.0, score))
+
+
+def score_prefix_diversity(name: str, prefix_counts: dict[str, int] | None = None) -> float:
+    """Score 0-1 based on prefix uniqueness across the candidate pool.
+    Penalizes when >10 candidates share a 4-char prefix."""
+    if not prefix_counts or len(name) < 4:
+        return 1.0
+
+    prefix = name[:4].lower()
+    count = prefix_counts.get(prefix, 1)
+
+    if count <= 3:
+        return 1.0
+    elif count <= 6:
+        return 0.7
+    elif count <= 10:
+        return 0.4
+    else:
+        return 0.2
+
+
 # --- Composite scoring ---
 
 WEIGHTS = {
-    "pronounce": 0.30,
-    "spelling": 0.25,
-    "length": 0.20,
-    "variety": 0.15,
-    "start": 0.10,
+    "pronounce": 0.20,
+    "spelling": 0.20,
+    "length": 0.15,
+    "variety": 0.10,
+    "start": 0.05,
+    "sound": 0.15,
+    "diversity": 0.15,
 }
 
 
-def score_candidate(name: str) -> dict:
+def score_candidate(name: str, prefix_counts: dict[str, int] | None = None) -> dict:
     """Score a candidate name. Returns dict with individual scores and weighted total."""
     scores = {
         "pronounce": score_pronounceability(name),
@@ -176,6 +261,8 @@ def score_candidate(name: str) -> dict:
         "length": score_length(name),
         "variety": score_letter_variety(name),
         "start": score_starts_strong(name),
+        "sound": score_sound_symbolism(name),
+        "diversity": score_prefix_diversity(name, prefix_counts),
     }
     scores["total"] = round(sum(scores[k] * WEIGHTS[k] for k in WEIGHTS), 3)
     return scores
@@ -211,8 +298,12 @@ def main():
     if removed > 0:
         print(f"   ({removed} common words removed)", file=sys.stderr)
 
+    # Prefix frequency pre-pass for diversity scoring
+    from collections import Counter
+    prefix_counts = Counter(c[:4] for c in candidates if len(c) >= 4)
+
     # Score and sort
-    scored = [(name, score_candidate(name)) for name in candidates]
+    scored = [(name, score_candidate(name, prefix_counts)) for name in candidates]
     scored.sort(key=lambda x: x[1]["total"], reverse=True)
     top = scored[: args.top]
 

@@ -69,6 +69,49 @@ class TestMorphemeBlends:
         # But should be very few compared to multi-seed
         assert len(blends) <= 2, f"Single seed should produce very few blends, got {len(blends)}"
 
+    def test_custom_prefixes_and_suffixes(self):
+        """When blend-prefixes and blend-suffixes are provided, use them instead of extraction."""
+        seeds = ["memory", "recall"]
+        prefixes = ["sol", "ven", "kai"]
+        suffixes = ["ora", "ine", "ova"]
+        blends = generate_morpheme_blends(seeds, blend_prefixes=prefixes, blend_suffixes=suffixes)
+        # Should use custom parts, not extracted word[:4]/word[-4:]
+        assert len(blends) > 0, "Should produce blends from custom parts"
+        # All blends should start with one of our prefixes
+        for b in blends:
+            assert any(b.startswith(p) for p in prefixes), (
+                f"Blend '{b}' doesn't start with any custom prefix"
+            )
+
+    def test_custom_prefixes_only(self):
+        """When only prefixes provided, suffixes fall back to extraction."""
+        seeds = ["memory", "recall", "trace", "pattern"]
+        prefixes = ["sol", "ven"]
+        blends = generate_morpheme_blends(seeds, blend_prefixes=prefixes)
+        assert len(blends) > 0, "Should produce blends with custom prefixes + extracted suffixes"
+        for b in blends:
+            assert any(b.startswith(p) for p in prefixes), (
+                f"Blend '{b}' doesn't start with any custom prefix"
+            )
+
+    def test_custom_suffixes_only(self):
+        """When only suffixes provided, prefixes fall back to extraction."""
+        seeds = ["memory", "recall", "trace", "pattern"]
+        suffixes = ["ora", "ine"]
+        blends = generate_morpheme_blends(seeds, blend_suffixes=suffixes)
+        assert len(blends) > 0, "Should produce blends with extracted prefixes + custom suffixes"
+        for b in blends:
+            assert any(b.endswith(s) for s in suffixes), (
+                f"Blend '{b}' doesn't end with any custom suffix"
+            )
+
+    def test_fallback_without_custom_parts(self):
+        """Without custom parts, behavior is unchanged (backward compat)."""
+        seeds = ["memory", "recall", "trace", "pattern"]
+        blends_default = generate_morpheme_blends(seeds)
+        blends_none = generate_morpheme_blends(seeds, blend_prefixes=None, blend_suffixes=None)
+        assert blends_default == blends_none
+
 
 class TestBasicFilter:
     def test_removes_short_words(self):
