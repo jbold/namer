@@ -45,25 +45,15 @@ From the user's answers, extract **30-50 seed words**:
 - **Cross-cultural roots** — Latin, Greek, Sanskrit, Japanese, Arabic roots carrying the right connotation
 - **Sound-designed** — invented syllable combos chosen for phonetic personality
 
-**Sound profile** — from "need to say," define the target phonetic character:
-
-| Sound | Effect | Example |
-|-------|--------|---------|
-| Plosives (b,d,k,t) | Decisive, strong, crisp | **B**lackBerry, Palen**t**ir |
-| Fricatives (s,f,v) | Smooth, flowing, alive | **V**ercel, **S**onos |
-| Nasals (m,n) | Warm, resonant, approachable | **N**avan |
-| Front vowels (i,e) | Light, fast, precise | Sw**i**ffer, Dasan**i** |
-| Back vowels (o,u) | Solid, strong, grounded | S**o**nos |
-| Z | Electric, attention-drawing | A**z**ure |
-| X | Innovative, edgy | Ne**x**t |
+**Sound profile** — from "need to say," define the target phonetic character using `references/sound-symbolism.md`. Identify target phoneme classes (plosives, fricatives, nasals, etc.), vowel types (front/back/open), and specific high-value letters.
 
 Present the seeds and sound profile to the user before proceeding.
 
 ## Step 3: Generate
 
-Generate **150-200 name candidates** using these approaches:
+Generate **150-200 name candidates** using these approaches and `references/morphemes.md` as a source:
 
-1. **Cross-cultural roots** — Latin, Greek, Sanskrit, Japanese, Arabic, Celtic, Norse words/roots related to seeds. Remix, combine, truncate into name-length forms.
+1. **Cross-cultural roots** — Latin, Greek, Sanskrit, Japanese, Arabic roots from `references/morphemes.md` related to seeds. Remix, combine, truncate into name-length forms.
 2. **Mythological & historical** — figures, places, concepts from world mythology and history that resonate with the brand strategy.
 3. **Morpheme blends & portmanteaus** — combine syllable fragments from seeds into invented words. Target 5-9 characters.
 4. **Compound multipliers** — two short words/fragments combined where 1+1=3 (creates richer associations than either alone). E.g. BlackBerry, Impossible.
